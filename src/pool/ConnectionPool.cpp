@@ -75,6 +75,9 @@ namespace vix::db
     for (std::size_t i = 0; i < cfg_.min; ++i)
     {
       auto c = factory_();
+      if (!c || !c->ping())
+        throw DBError("ConnectionPool::warmup: factory returned invalid connection");
+
       idle_.push(std::move(c));
       ++total_;
     }

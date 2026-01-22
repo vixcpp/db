@@ -218,13 +218,11 @@ set(VIX_DB_PUBLIC_HEADERS
 
 set(VIX_DB_SOURCES
   src/pool/ConnectionPool.cpp
-  src/Transaction.cpp
   src/Database.cpp
   src/mig/MigrationsRunner.cpp
   src/mig/FileMigrationsRunner.cpp
   src/Sha256.cpp
 )
-
 
 # MySQL driver sources
 if (VIX_DB_HAS_MYSQL)
