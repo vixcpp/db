@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_ORM_DRIVERS_HPP
-#define VIX_ORM_DRIVERS_HPP
+#ifndef VIX_DB_DRIVERS_HPP
+#define VIX_DB_DRIVERS_HPP
 
 #include <any>
 #include <cstdint>
@@ -70,4 +70,4 @@ namespace vix::db
 
 } // namespace vix::db
 
-#endif // VIX_ORM_DRIVERS_HPP
+#endif // VIX_DB_DRIVERS_HPP

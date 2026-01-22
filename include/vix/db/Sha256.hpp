@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_SHA256_HPP
-#define VIX_SHA256_HPP
+#ifndef VIX_DB_SHA256_HPP
+#define VIX_DB_SHA256_HPP
 
 #include <array>
 #include <cstdint>

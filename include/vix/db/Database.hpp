@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_ORM_DATABASE_HPP
-#define VIX_ORM_DATABASE_HPP
+#ifndef VIX_DB_DATABASE_HPP
+#define VIX_DB_DATABASE_HPP
 
 #include <string>
 #include <vix/db/ConnectionPool.hpp>
@@ -71,4 +71,4 @@ namespace vix::db
 
 } // namespace vix::db
 
-#endif // VIX_ORM_DATABASE_HPP
+#endif // VIX_DB_DATABASE_HPP

@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_TRANSACTION_HPP
-#define VIX_TRANSACTION_HPP
+#ifndef VIX_DB_TRANSACTION_HPP
+#define VIX_DB_TRANSACTION_HPP
 
 #include <vix/db/ConnectionPool.hpp>
 
@@ -57,4 +57,4 @@ namespace vix::db
   };
 } // namespace vix::db
 
-#endif // VIX_TRANSACTION_HPP
+#endif // VIX_DB_TRANSACTION_HPP

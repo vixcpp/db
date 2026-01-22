@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_MIGRATIONS_RUNNER_HPP
-#define VIX_MIGRATIONS_RUNNER_HPP
+#ifndef VIX_DB_MIGRATIONS_RUNNER_HPP
+#define VIX_DB_MIGRATIONS_RUNNER_HPP
 
 #include <vix/db/Migration.hpp>
 #include <vector>
@@ -30,4 +30,4 @@ namespace vix::db
   };
 } // namespace vix::db
 
-#endif // VIX_MIGRATIONS_RUNNER_HPP
+#endif // VIX_DB_MIGRATIONS_RUNNER_HPP

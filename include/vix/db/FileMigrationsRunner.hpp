@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_FILE_MIGRATIONS_RUNNER_HPP
-#define VIX_FILE_MIGRATIONS_RUNNER_HPP
+#ifndef VIX_DB_FILE_MIGRATIONS_RUNNER_HPP
+#define VIX_DB_FILE_MIGRATIONS_RUNNER_HPP
 
 #include <vix/db/Drivers.hpp>
 

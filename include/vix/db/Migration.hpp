@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_MIGRATION_HPP
-#define VIX_MIGRATION_HPP
+#ifndef VIX_DB_MIGRATION_HPP
+#define VIX_DB_MIGRATION_HPP
 
 #include <string>
 #include <vix/db/Drivers.hpp>
@@ -27,4 +27,4 @@ namespace vix::db
   };
 } // namespace vix::db
 
-#endif // VIX_MIGRATION_HPP
+#endif // VIX_DB_MIGRATION_HPP

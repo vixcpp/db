@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_ERRORS_HPP
-#define VIX_ERRORS_HPP
+#ifndef VIX_DB_ERRORS_HPP
+#define VIX_DB_ERRORS_HPP
 
 #include <string>
 #include <stdexcept>
@@ -34,4 +34,4 @@ namespace vix::db
   };
 } // namespace vix::db
 
-#endif // VIX_ERRORS_HPP
+#endif // VIX_DB_ERRORS_HPP

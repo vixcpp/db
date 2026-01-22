@@ -11,7 +11,7 @@
  *  Vix.cpp
  */
 #include <vix/db/Database.hpp>
-#if VIX_ORM_HAS_MYSQL
+#if VIX_DB_HAS_MYSQL
 #include <vix/db/MySQLDriver.hpp>
 #endif
 #include <vix/config/Config.hpp>
@@ -21,7 +21,7 @@
 
 namespace vix::db
 {
-#if VIX_ORM_HAS_MYSQL
+#if VIX_DB_HAS_MYSQL
   ConnectionFactory make_mysql_factory(const MySQLConfig &cfg)
   {
     return [cfg]() -> ConnectionPtr

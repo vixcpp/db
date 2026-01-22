@@ -10,10 +10,10 @@
  *
  *  Vix.cpp
  */
-#ifndef VIX_MYSQL_DRIVER_HPP
-#define VIX_MYSQL_DRIVER_HPP
+#ifndef VIX_DB_MYSQL_DRIVER_HPP
+#define VIX_DB_MYSQL_DRIVER_HPP
 
-#if VIX_ORM_HAS_MYSQL
+#if VIX_DB_HAS_MYSQL
 
 #include <vix/db/Drivers.hpp>
 
@@ -72,5 +72,5 @@ namespace vix::db
                      std::string db);
 }
 
-#endif // VIX_ORM_HAS_MYSQL
+#endif // VIX_DB_HAS_MYSQL
 #endif
