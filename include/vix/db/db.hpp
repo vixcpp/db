@@ -19,7 +19,7 @@
 #include <vix/db/Errors.hpp>
 #include <vix/db/Drivers.hpp>
 #if VIX_DB_HAS_MYSQL
-#include <vix/db/MySQLDriver.hpp>
+#include <vix/db/mysql/MySQLDriver.hpp>
 #endif
 #include <vix/db/ConnectionPool.hpp>
 #include <vix/db/Transaction.hpp>

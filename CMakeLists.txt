@@ -234,14 +234,43 @@ endif()
 
 # Postgres driver sources (future placeholders)
 if (VIX_DB_HAS_POSTGRES)
-  list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/postgres/PostgresDriver.hpp)
-  list(APPEND VIX_DB_SOURCES        src/postgres/PostgresDriver.cpp)
+  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/vix/db/postgres/PostgresDriver.hpp"
+      AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/postgres/PostgresDriver.cpp")
+    list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/postgres/PostgresDriver.hpp)
+    list(APPEND VIX_DB_SOURCES        src/postgres/PostgresDriver.cpp)
+  else()
+    message(WARNING "[vix_db] postgres enabled but driver sources not found; disabling.")
+    set(VIX_DB_HAS_POSTGRES OFF)
+    set(VIX_DB_USE_POSTGRES OFF)
+  endif()
 endif()
 
 # Redis client sources (future placeholders)
 if (VIX_DB_HAS_REDIS)
   list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/redis/RedisClient.hpp)
   list(APPEND VIX_DB_SOURCES        src/redis/RedisClient.cpp)
+endif()
+
+if (VIX_DB_BUILD_TOOLS)
+  add_executable(vix_db_migrator)
+
+  target_sources(vix_db_migrator PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/migrator/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/migrator/MigratorCLI.cpp
+  )
+
+  target_link_libraries(vix_db_migrator PRIVATE vix::db)
+  target_compile_features(vix_db_migrator PRIVATE cxx_std_20)
+
+  if (MSVC)
+    target_compile_options(vix_db_migrator PRIVATE ${_WARNINGS_MSVC})
+  else()
+    target_compile_options(vix_db_migrator PRIVATE ${_WARNINGS_GNU})
+  endif()
+
+  install(TARGETS vix_db_migrator
+    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/vix
+  )
 endif()
 
 # ------------------------------------------------------------------------------

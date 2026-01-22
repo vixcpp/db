@@ -12,7 +12,7 @@
  */
 #include <vix/db/Database.hpp>
 #if VIX_DB_HAS_MYSQL
-#include <vix/db/MySQLDriver.hpp>
+#include <vix/db/mysql/MySQLDriver.hpp>
 #endif
 #include <vix/config/Config.hpp>
 
