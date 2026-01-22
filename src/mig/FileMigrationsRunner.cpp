@@ -18,12 +18,28 @@
 #include <sstream>
 #include <algorithm>
 #include <unordered_map>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 
 namespace vix::db
 {
   static std::string now_text()
   {
-    return "now";
+    using namespace std::chrono;
+    const auto now = system_clock::now();
+    const std::time_t t = system_clock::to_time_t(now);
+
+    std::tm tm{};
+#if defined(_WIN32)
+    gmtime_s(&tm, &t);
+#else
+    gmtime_r(&t, &tm);
+#endif
+
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
+    return oss.str();
   }
 
   void FileMigrationsRunner::ensureTable()
@@ -176,7 +192,7 @@ namespace vix::db
       return false;
 
     if (checksum_out)
-      *checksum_out = rs->row()->getString(0);
+      *checksum_out = rs->row().getString(0);
 
     return true;
   }
@@ -203,7 +219,7 @@ namespace vix::db
     auto rs = st->query();
     if (!rs->next())
       return {};
-    return rs->row()->getString(0);
+    return rs->row().getString(0);
   }
 
   void FileMigrationsRunner::applyAll()

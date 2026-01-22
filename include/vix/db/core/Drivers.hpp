@@ -32,6 +32,7 @@ namespace vix::db
     void bind(std::size_t idx, double v) { bind(idx, f64(v)); }
     void bind(std::size_t idx, bool v) { bind(idx, b(v)); }
     void bind(std::size_t idx, std::string v) { bind(idx, str(std::move(v))); }
+    void bind(std::size_t idx, std::string_view v) { bind(idx, std::string(v)); }
     void bindNull(std::size_t idx) { bind(idx, null()); }
     virtual std::unique_ptr<ResultSet> query() = 0;
     virtual std::uint64_t exec() = 0;

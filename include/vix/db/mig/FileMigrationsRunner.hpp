@@ -1,6 +1,6 @@
 /**
  *
- *  @file FileMigrationRunner.hpp
+ *  @file FileMigrationsRunner.hpp
  *  @author Gaspard Kirira
  *
  *  Copyright 2025, Gaspard Kirira.  All rights reserved.
