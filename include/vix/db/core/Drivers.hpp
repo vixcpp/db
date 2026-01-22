@@ -13,38 +13,26 @@
 #ifndef VIX_DB_DRIVERS_HPP
 #define VIX_DB_DRIVERS_HPP
 
-#include <any>
+#include <cstddef>
 #include <cstdint>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <vector>
-#include <memory>
 #include <functional>
+#include <memory>
+#include <string_view>
+
+#include <vix/db/core/Result.hpp>
+#include <vix/db/core/Value.hpp>
 
 namespace vix::db
 {
-  struct ResultRow
-  {
-    virtual ~ResultRow() = default;
-    virtual bool isNull(std::size_t i) const = 0;
-    virtual std::string getString(std::size_t i) const = 0;
-    virtual std::int64_t getInt64(std::size_t i) const = 0;
-    virtual double getDouble(std::size_t i) const = 0;
-  };
-
-  struct ResultSet
-  {
-    virtual ~ResultSet() = default;
-    virtual bool next() = 0;
-    virtual std::size_t cols() const = 0;
-    virtual std::unique_ptr<ResultRow> row() const = 0;
-  };
-
   struct Statement
   {
     virtual ~Statement() = default;
-    virtual void bind(std::size_t idx, const std::any &v) = 0;
+    virtual void bind(std::size_t idx, const DbValue &v) = 0;
+    void bind(std::size_t idx, std::int64_t v) { bind(idx, i64(v)); }
+    void bind(std::size_t idx, double v) { bind(idx, f64(v)); }
+    void bind(std::size_t idx, bool v) { bind(idx, b(v)); }
+    void bind(std::size_t idx, std::string v) { bind(idx, str(std::move(v))); }
+    void bindNull(std::size_t idx) { bind(idx, null()); }
     virtual std::unique_ptr<ResultSet> query() = 0;
     virtual std::uint64_t exec() = 0;
   };
@@ -57,16 +45,11 @@ namespace vix::db
     virtual void commit() = 0;
     virtual void rollback() = 0;
     virtual std::uint64_t lastInsertId() = 0;
+    virtual bool ping() { return true; }
   };
 
   using ConnectionPtr = std::shared_ptr<Connection>;
   using ConnectionFactory = std::function<ConnectionPtr()>;
-
-  ConnectionFactory make_mysql_factory(
-      std::string host,
-      std::string user,
-      std::string pass,
-      std::string db);
 
 } // namespace vix::db
 

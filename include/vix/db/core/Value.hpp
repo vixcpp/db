@@ -15,7 +15,6 @@
 
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -36,11 +35,15 @@ namespace vix::db
 
   inline DbValue null() { return nullptr; }
 
-  // Helpers (ergonomie)
   inline DbValue i64(std::int64_t v) { return v; }
   inline DbValue f64(double v) { return v; }
   inline DbValue b(bool v) { return v; }
   inline DbValue str(std::string v) { return DbValue{std::move(v)}; }
-}
+
+  inline DbValue blob(std::vector<std::uint8_t> bytes)
+  {
+    return DbValue{Blob{std::move(bytes)}};
+  }
+} // namespace vix::db
 
 #endif
