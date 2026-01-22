@@ -1,4 +1,3 @@
-
 /**
  *
  *  @file MySQLDriver.cpp
@@ -12,24 +11,31 @@
  *  Vix.cpp
  */
 #include <vix/db/core/Errors.hpp>
-#if VIX_ORM_HAS_MYSQL
+
+#if VIX_DB_HAS_MYSQL
+
 #include <vix/db/drivers/mysql/MySQLDriver.hpp>
 
 #include <cppconn/statement.h>
-#include <mysql_driver.h>
+#include <cppconn/prepared_statement.h>
+#include <cppconn/resultset.h>
+
 #include <memory>
-#include <typeinfo>
+#include <string>
+#include <utility>
+#include <variant>
 
 namespace vix::db
 {
   class MySQLResultRow final : public ResultRow
   {
-    std::shared_ptr<sql::ResultSet> rs_;
-    [[maybe_unused]] std::size_t idx_;
+    sql::ResultSet *rs_ = nullptr;
 
   public:
-    MySQLResultRow(std::shared_ptr<sql::ResultSet> rs, std::size_t idx)
-        : rs_(std::move(rs)), idx_(idx) {}
+    MySQLResultRow() = default;
+    explicit MySQLResultRow(sql::ResultSet *rs) : rs_(rs) {}
+
+    void reset(sql::ResultSet *rs) { rs_ = rs; }
 
     bool isNull(std::size_t i) const override
     {
@@ -49,22 +55,25 @@ namespace vix::db
 
     double getDouble(std::size_t i) const override
     {
-      auto v = rs_->getDouble(static_cast<unsigned int>(i + 1));
-      return static_cast<double>(v);
+      return static_cast<double>(
+          rs_->getDouble(static_cast<unsigned int>(i + 1)));
     }
   };
 
   class MySQLResultSet final : public ResultSet
   {
-    std::shared_ptr<sql::ResultSet> rs_;
+    std::unique_ptr<sql::ResultSet> rs_;
+    mutable MySQLResultRow row_{};
 
   public:
-    explicit MySQLResultSet(std::shared_ptr<sql::ResultSet> rs)
-        : rs_(std::move(rs)) {}
+    explicit MySQLResultSet(std::unique_ptr<sql::ResultSet> rs)
+        : rs_(std::move(rs)), row_(rs_.get()) {}
 
     bool next() override
     {
-      return rs_->next();
+      const bool ok = rs_->next();
+      row_.reset(rs_.get());
+      return ok;
     }
 
     std::size_t cols() const override
@@ -72,9 +81,9 @@ namespace vix::db
       return static_cast<std::size_t>(rs_->getMetaData()->getColumnCount());
     }
 
-    std::unique_ptr<ResultRow> row() const override
+    const ResultRow &row() const override
     {
-      return std::make_unique<MySQLResultRow>(rs_, 0);
+      return row_;
     }
   };
 
@@ -88,33 +97,56 @@ namespace vix::db
       return static_cast<unsigned int>(i);
     }
 
+    static void bind_null(sql::PreparedStatement &ps, unsigned int i)
+    {
+      ps.setNull(i, 0);
+    }
+
   public:
     explicit MySQLStatement(std::unique_ptr<sql::PreparedStatement> ps)
         : ps_(std::move(ps)) {}
 
-    void bind(std::size_t idx, const std::any &v) override
+    void bind(std::size_t idx, const DbValue &v) override
     {
       const auto i = ui(idx);
+
       try
       {
-        if (v.type() == typeid(int))
-          ps_->setInt(i, std::any_cast<int>(v));
-        else if (v.type() == typeid(std::int64_t))
-          ps_->setInt64(i, std::any_cast<std::int64_t>(v));
-        else if (v.type() == typeid(unsigned))
-          ps_->setUInt(i, std::any_cast<unsigned>(v));
-        else if (v.type() == typeid(double))
-          ps_->setDouble(i, std::any_cast<double>(v));
-        else if (v.type() == typeid(float))
-          ps_->setDouble(i, static_cast<double>(std::any_cast<float>(v)));
-        else if (v.type() == typeid(bool))
-          ps_->setBoolean(i, std::any_cast<bool>(v));
-        else if (v.type() == typeid(const char *))
-          ps_->setString(i, std::any_cast<const char *>(v));
-        else if (v.type() == typeid(std::string))
-          ps_->setString(i, std::any_cast<std::string>(v));
-        else
-          throw DBError("Unsupported bind type in MySQLStatement::bind");
+        std::visit(
+            [&](const auto &x)
+            {
+              using T = std::decay_t<decltype(x)>;
+
+              if constexpr (std::is_same_v<T, std::nullptr_t>)
+              {
+                bind_null(*ps_, i);
+              }
+              else if constexpr (std::is_same_v<T, bool>)
+              {
+                ps_->setBoolean(i, x);
+              }
+              else if constexpr (std::is_same_v<T, std::int64_t>)
+              {
+                ps_->setInt64(i, x);
+              }
+              else if constexpr (std::is_same_v<T, double>)
+              {
+                ps_->setDouble(i, x);
+              }
+              else if constexpr (std::is_same_v<T, std::string>)
+              {
+                ps_->setString(i, x);
+              }
+              else if constexpr (std::is_same_v<T, Blob>)
+              {
+                throw DBError("MySQL bind Blob not implemented yet");
+              }
+              else
+              {
+                throw DBError("Unsupported DbValue variant in MySQLStatement::bind");
+              }
+            },
+            v);
       }
       catch (const sql::SQLException &e)
       {
@@ -126,8 +158,8 @@ namespace vix::db
     {
       try
       {
-        auto raw = std::shared_ptr<sql::ResultSet>(ps_->executeQuery());
-        return std::make_unique<MySQLResultSet>(std::move(raw));
+        auto rs = std::unique_ptr<sql::ResultSet>(ps_->executeQuery());
+        return std::make_unique<MySQLResultSet>(std::move(rs));
       }
       catch (const sql::SQLException &e)
       {
@@ -200,10 +232,11 @@ namespace vix::db
   }
 
   std::function<std::shared_ptr<Connection>()>
-  make_mysql_factory(std::string host,
-                     std::string user,
-                     std::string pass,
-                     std::string db)
+  make_mysql_factory(
+      std::string host,
+      std::string user,
+      std::string pass,
+      std::string db)
   {
     return [host = std::move(host),
             user = std::move(user),
@@ -218,4 +251,4 @@ namespace vix::db
 
 } // namespace vix::db
 
-#endif
+#endif // VIX_DB_HAS_MYSQL

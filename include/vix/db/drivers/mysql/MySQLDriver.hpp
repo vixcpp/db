@@ -18,8 +18,6 @@
 #include <vix/db/core/Drivers.hpp>
 
 #include <cppconn/connection.h>
-#include <cppconn/prepared_statement.h>
-#include <cppconn/resultset.h>
 #include <mysql_driver.h>
 
 #include <memory>
@@ -37,10 +35,7 @@ namespace vix::db
 
     std::unique_ptr<Statement> prepare(std::string_view sql) override;
 
-    void begin() override
-    {
-      conn_->setAutoCommit(false);
-    }
+    void begin() override { conn_->setAutoCommit(false); }
 
     void commit() override
     {
@@ -56,6 +51,18 @@ namespace vix::db
 
     std::uint64_t lastInsertId() override;
 
+    bool ping() override
+    {
+      try
+      {
+        return conn_ && conn_->isValid();
+      }
+      catch (...)
+      {
+        return false;
+      }
+    }
+
     const std::shared_ptr<sql::Connection> &raw() const { return conn_; }
   };
 
@@ -70,7 +77,8 @@ namespace vix::db
                      std::string user,
                      std::string pass,
                      std::string db);
-}
+
+} // namespace vix::db
 
 #endif // VIX_DB_HAS_MYSQL
-#endif
+#endif // VIX_DB_MYSQL_DRIVER_HPP
