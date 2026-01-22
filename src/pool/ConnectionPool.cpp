@@ -10,7 +10,7 @@
  *
  *  Vix.cpp
  */
-#include <vix/db/ConnectionPool.hpp>
+#include <vix/db/pool/ConnectionPool.hpp>
 
 namespace vix::db
 {

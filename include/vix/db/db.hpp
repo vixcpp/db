@@ -16,14 +16,14 @@
 #ifndef VIX_DB_HPP
 #define VIX_DB_HPP
 
-#include <vix/db/Errors.hpp>
-#include <vix/db/Drivers.hpp>
-#if VIX_DB_HAS_MYSQL
-#include <vix/db/mysql/MySQLDriver.hpp>
-#endif
-#include <vix/db/ConnectionPool.hpp>
+#include <vix/db/core/Errors.hpp>
+#include <vix/db/core/Value.hpp>
+#include <vix/db/core/Drivers.hpp>
+#include <vix/db/pool/ConnectionPool.hpp>
 #include <vix/db/Transaction.hpp>
-#include <vix/db/Migration.hpp>
-#include <vix/db/MigrationsRunner.hpp>
+#include <vix/db/Database.hpp>
+#include <vix/db/mig/Migration.hpp>
+#include <vix/db/mig/MigrationsRunner.hpp>
+#include <vix/db/mig/FileMigrationsRunner.hpp>
 
 #endif

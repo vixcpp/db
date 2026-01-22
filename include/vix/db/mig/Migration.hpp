@@ -14,7 +14,7 @@
 #define VIX_DB_MIGRATION_HPP
 
 #include <string>
-#include <vix/db/Drivers.hpp>
+#include <vix/db/core/Drivers.hpp>
 
 namespace vix::db
 {

@@ -13,7 +13,7 @@
 #ifndef VIX_DB_TRANSACTION_HPP
 #define VIX_DB_TRANSACTION_HPP
 
-#include <vix/db/ConnectionPool.hpp>
+#include <vix/db/pool/ConnectionPool.hpp>
 
 namespace vix::db
 {

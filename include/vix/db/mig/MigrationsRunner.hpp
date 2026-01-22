@@ -13,7 +13,7 @@
 #ifndef VIX_DB_MIGRATIONS_RUNNER_HPP
 #define VIX_DB_MIGRATIONS_RUNNER_HPP
 
-#include <vix/db/Migration.hpp>
+#include <vix/db/mig/Migration.hpp>
 #include <vector>
 
 namespace vix::db

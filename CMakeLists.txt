@@ -199,30 +199,35 @@ endif()
 # ------------------------------------------------------------------------------
 set(VIX_DB_PUBLIC_HEADERS
   include/vix/db/db.hpp
-  include/vix/db/Errors.hpp
-  include/vix/db/Value.hpp
-  include/vix/db/Drivers.hpp
-  include/vix/db/ConnectionPool.hpp
-  include/vix/db/Transaction.hpp
   include/vix/db/Database.hpp
-  include/vix/db/Migration.hpp
-  include/vix/db/MigrationsRunner.hpp
-  include/vix/db/FileMigrationsRunner.hpp
+  include/vix/db/Transaction.hpp
   include/vix/db/Sha256.hpp
+
+  include/vix/db/core/Errors.hpp
+  include/vix/db/core/Value.hpp
+  include/vix/db/core/Drivers.hpp
+  include/vix/db/core/Result.hpp
+
+  include/vix/db/pool/ConnectionPool.hpp
+
+  include/vix/db/mig/Migration.hpp
+  include/vix/db/mig/MigrationsRunner.hpp
+  include/vix/db/mig/FileMigrationsRunner.hpp
 )
 
 set(VIX_DB_SOURCES
-  src/ConnectionPool.cpp
+  src/pool/ConnectionPool.cpp
   src/Transaction.cpp
   src/Database.cpp
-  src/MigrationsRunner.cpp
-  src/FileMigrationsRunner.cpp
+  src/mig/MigrationsRunner.cpp
+  src/mig/FileMigrationsRunner.cpp
   src/Sha256.cpp
 )
 
+
 # MySQL driver sources
 if (VIX_DB_HAS_MYSQL)
-  list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/mysql/MySQLDriver.hpp)
+  list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/drivers/mysql/MySQLDriver.hpp)
   list(APPEND VIX_DB_SOURCES        src/mysql/MySQLDriver.cpp)
 endif()
 

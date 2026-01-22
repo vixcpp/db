@@ -19,7 +19,7 @@
 #include <mutex>
 #include <queue>
 
-#include <vix/db/Drivers.hpp>
+#include <vix/db/core/Drivers.hpp>
 
 namespace vix::db
 {

@@ -10,8 +10,8 @@
  *
  *  Vix.cpp
  */
-#include <vix/db/FileMigrationsRunner.hpp>
-#include <vix/db/Errors.hpp>
+#include <vix/db/mig/FileMigrationsRunner.hpp>
+#include <vix/db/core/Errors.hpp>
 #include <vix/db/Sha256.hpp>
 
 #include <fstream>

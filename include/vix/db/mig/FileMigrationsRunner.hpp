@@ -13,7 +13,7 @@
 #ifndef VIX_DB_FILE_MIGRATIONS_RUNNER_HPP
 #define VIX_DB_FILE_MIGRATIONS_RUNNER_HPP
 
-#include <vix/db/Drivers.hpp>
+#include <vix/db/core/Drivers.hpp>
 
 #include <filesystem>
 #include <string>

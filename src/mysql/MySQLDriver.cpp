@@ -11,9 +11,9 @@
  *
  *  Vix.cpp
  */
-#include <vix/db/Errors.hpp>
+#include <vix/db/core/Errors.hpp>
 #if VIX_ORM_HAS_MYSQL
-#include <vix/db/MySQLDriver.hpp>
+#include <vix/db/drivers/mysql/MySQLDriver.hpp>
 
 #include <cppconn/statement.h>
 #include <mysql_driver.h>

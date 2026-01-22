@@ -10,7 +10,7 @@
  *
  *  Vix.cpp
  */
-#include <vix/db/MigrationsRunner.hpp>
+#include <vix/db/mig/MigrationsRunner.hpp>
 
 namespace vix::db
 {

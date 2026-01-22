@@ -15,7 +15,7 @@
 
 #if VIX_DB_HAS_MYSQL
 
-#include <vix/db/Drivers.hpp>
+#include <vix/db/core/Drivers.hpp>
 
 #include <cppconn/connection.h>
 #include <cppconn/prepared_statement.h>
