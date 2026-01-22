@@ -34,6 +34,7 @@ option(VIX_DB_REQUIRE_POSTGRES  "Fail if Postgres requested but not found"   OFF
 # Redis is not SQL, but useful for caching / sessions / queue (future)
 option(VIX_DB_USE_REDIS         "Enable Redis client (future)"               OFF)
 option(VIX_DB_REQUIRE_REDIS     "Fail if Redis requested but not found"      OFF)
+option(VIX_BUILD_EXAMPLES       "Build examples for Vix modules" OFF)
 
 # ------------------------------------------------------------------------------
 # Language / PIC
@@ -362,6 +363,13 @@ if (VIX_DB_HAS_REDIS)
   else()
     message(WARNING "[vix_db] redis enabled but no client target found; linkage skipped.")
   endif()
+endif()
+
+# ------------------------------------------------------------------------------
+# Examples
+# ------------------------------------------------------------------------------
+if (VIX_DB_BUILD_EXAMPLES)
+  add_subdirectory(examples)
 endif()
 
 # ------------------------------------------------------------------------------

@@ -29,17 +29,29 @@ namespace vix::db
       pooled_.get().begin();
     }
 
-    ~Transaction()
+    ~Transaction() noexcept
     {
-      if (active_)
-        try
-        {
-          pooled_.get().rollback();
-        }
-        catch (...)
-        {
-        }
+      if (!active_)
+        return;
+      try
+      {
+        pooled_.get().rollback();
+      }
+      catch (...)
+      {
+      }
     }
+
+    Transaction(const Transaction &) = delete;
+    Transaction &operator=(const Transaction &) = delete;
+
+    Transaction(Transaction &&other) noexcept
+        : pooled_(std::move(other.pooled_)), active_(other.active_)
+    {
+      other.active_ = false;
+    }
+
+    Transaction &operator=(Transaction &&) = delete;
 
     void commit()
     {
@@ -55,6 +67,7 @@ namespace vix::db
 
     Connection &conn() { return pooled_.get(); }
   };
+
 } // namespace vix::db
 
 #endif // VIX_DB_TRANSACTION_HPP

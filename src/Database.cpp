@@ -11,9 +11,15 @@
  *  Vix.cpp
  */
 #include <vix/db/Database.hpp>
+
 #if VIX_DB_HAS_MYSQL
 #include <vix/db/drivers/mysql/MySQLDriver.hpp>
 #endif
+
+#if VIX_DB_HAS_SQLITE
+#include <vix/db/drivers/sqlite/SQLiteDriver.hpp>
+#endif
+
 #include <vix/config/Config.hpp>
 
 #include <stdexcept>
@@ -21,35 +27,15 @@
 
 namespace vix::db
 {
-#if VIX_DB_HAS_MYSQL
-  ConnectionFactory make_mysql_factory(const MySQLConfig &cfg)
-  {
-    return [cfg]() -> ConnectionPtr
-    {
-      auto raw = make_mysql_conn(cfg.host, cfg.user, cfg.password, cfg.database);
-      auto mysql_conn = std::make_shared<MySQLConnection>(std::move(raw));
-      return std::static_pointer_cast<Connection>(mysql_conn);
-    };
-  }
-#endif
-
   DbConfig make_db_config_from_vix_config(const vix::config::Config &cfg)
   {
     DbConfig out;
 
-    auto engine_str = cfg.getString("db.engine", "mysql");
-    if (engine_str == "mysql")
-    {
-      out.engine = Engine::MySQL;
-    }
-    else if (engine_str == "sqlite")
-    {
+    const auto engine_str = cfg.getString("db.engine", "mysql");
+    if (engine_str == "sqlite")
       out.engine = Engine::SQLite;
-    }
     else
-    {
       out.engine = Engine::MySQL;
-    }
 
     out.mysql.host = cfg.getString("db.host", "tcp://127.0.0.1:3306");
     out.mysql.user = cfg.getString("db.user", "root");
@@ -57,7 +43,8 @@ namespace vix::db
     out.mysql.database = cfg.getString("db.database", "vixdb");
     out.mysql.pool.min = static_cast<std::size_t>(cfg.getInt("db.pool.min", 1));
     out.mysql.pool.max = static_cast<std::size_t>(cfg.getInt("db.pool.max", 8));
-    out.sqlite.path = cfg.getString("db.sqlite", "vix_orm.db");
+
+    out.sqlite.path = cfg.getString("db.sqlite", "vix_db.sqlite");
     out.sqlite.pool = out.mysql.pool;
 
     return out;
@@ -70,10 +57,22 @@ namespace vix::db
       switch (cfg.engine)
       {
       case Engine::MySQL:
-        return make_mysql_factory(cfg.mysql);
+      {
+#if VIX_DB_HAS_MYSQL
+        return make_mysql_factory(cfg.mysql.host, cfg.mysql.user, cfg.mysql.password, cfg.mysql.database);
+#else
+        throw std::runtime_error("MySQL requested but VIX_DB_HAS_MYSQL=0");
+#endif
+      }
 
       case Engine::SQLite:
-        throw std::runtime_error("SQLite engine not implemented yet in Vix ORM");
+      {
+#if VIX_DB_HAS_SQLITE
+        return make_sqlite_factory(cfg.sqlite.path);
+#else
+        throw std::runtime_error("SQLite requested but VIX_DB_HAS_SQLITE=0");
+#endif
+      }
 
       default:
         throw std::runtime_error("Unsupported database engine in DbConfig");

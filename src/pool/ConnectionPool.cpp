@@ -11,6 +11,7 @@
  *  Vix.cpp
  */
 #include <vix/db/pool/ConnectionPool.hpp>
+#include <vix/db/core/Errors.hpp>
 
 namespace vix::db
 {
@@ -18,10 +19,18 @@ namespace vix::db
   {
     std::unique_lock lk(m_);
 
-    if (!idle_.empty())
+    while (!idle_.empty())
     {
       auto c = idle_.front();
       idle_.pop();
+
+      if (!c || !c->ping())
+      {
+        if (total_ > 0)
+          --total_;
+        continue;
+      }
+
       return c;
     }
 
@@ -29,15 +38,24 @@ namespace vix::db
     {
       ++total_;
       lk.unlock();
-      return factory_();
+
+      auto c = factory_();
+      if (!c || !c->ping())
+      {
+        std::lock_guard g(m_);
+        if (total_ > 0)
+          --total_;
+        throw DBError("ConnectionPool: factory returned invalid connection");
+      }
+      return c;
     }
 
     cv_.wait(lk, [&]
              { return !idle_.empty(); });
 
-    auto c = idle_.front();
-    idle_.pop();
-    return c;
+    // on réessaye via le while
+    lk.unlock();
+    return acquire();
   }
 
   void ConnectionPool::release(ConnectionPtr c)

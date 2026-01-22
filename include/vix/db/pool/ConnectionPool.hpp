@@ -57,7 +57,7 @@ namespace vix::db
     explicit PooledConn(ConnectionPool &p)
         : pool_(p), c_(p.acquire()) {}
 
-    ~PooledConn()
+    ~PooledConn() noexcept
     {
       if (c_)
         pool_.release(std::move(c_));
@@ -66,7 +66,28 @@ namespace vix::db
     PooledConn(const PooledConn &) = delete;
     PooledConn &operator=(const PooledConn &) = delete;
 
+    PooledConn(PooledConn &&other) noexcept
+        : pool_(other.pool_), c_(std::move(other.c_)) {}
+
+    PooledConn &operator=(PooledConn &&other) noexcept
+    {
+      if (this == &other)
+        return *this;
+
+      if (&pool_ != &other.pool_)
+        std::terminate();
+
+      if (c_)
+        pool_.release(std::move(c_));
+
+      c_ = std::move(other.c_);
+      return *this;
+    }
+
     Connection &get() { return *c_; }
+    Connection *operator->() { return c_.get(); }
+    Connection &operator*() { return *c_; }
+
     ConnectionPtr &ptr() { return c_; }
     const ConnectionPtr &ptr() const { return c_; }
   };

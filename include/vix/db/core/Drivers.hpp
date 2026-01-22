@@ -28,12 +28,18 @@ namespace vix::db
   {
     virtual ~Statement() = default;
     virtual void bind(std::size_t idx, const DbValue &v) = 0;
+
+    void bind(std::size_t idx, int v) { bind(idx, static_cast<std::int64_t>(v)); }
+    void bind(std::size_t idx, unsigned v) { bind(idx, static_cast<std::int64_t>(v)); }
     void bind(std::size_t idx, std::int64_t v) { bind(idx, i64(v)); }
+    void bind(std::size_t idx, std::uint64_t v) { bind(idx, static_cast<std::int64_t>(v)); }
     void bind(std::size_t idx, double v) { bind(idx, f64(v)); }
     void bind(std::size_t idx, bool v) { bind(idx, b(v)); }
     void bind(std::size_t idx, std::string v) { bind(idx, str(std::move(v))); }
-    void bind(std::size_t idx, std::string_view v) { bind(idx, std::string(v)); }
+    void bind(std::size_t idx, const char *v) { bind(idx, str(std::string(v ? v : ""))); }
+
     void bindNull(std::size_t idx) { bind(idx, null()); }
+
     virtual std::unique_ptr<ResultSet> query() = 0;
     virtual std::uint64_t exec() = 0;
   };
