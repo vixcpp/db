@@ -11,16 +11,16 @@
  *
  *  Vix.cpp
  */
-#include <vix/orm/Errors.hpp>
+#include <vix/db/Errors.hpp>
 #if VIX_ORM_HAS_MYSQL
-#include <vix/orm/MySQLDriver.hpp>
+#include <vix/db/MySQLDriver.hpp>
 
 #include <cppconn/statement.h>
 #include <mysql_driver.h>
 #include <memory>
 #include <typeinfo>
 
-namespace vix::orm
+namespace vix::db
 {
   class MySQLResultRow final : public ResultRow
   {
@@ -216,6 +216,6 @@ namespace vix::orm
     };
   }
 
-} // namespace vix::orm
+} // namespace vix::db
 
 #endif

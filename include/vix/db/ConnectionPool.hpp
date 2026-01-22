@@ -19,9 +19,9 @@
 #include <mutex>
 #include <queue>
 
-#include <vix/orm/Drivers.hpp>
+#include <vix/db/Drivers.hpp>
 
-namespace vix::orm
+namespace vix::db
 {
   struct PoolConfig
   {
@@ -71,6 +71,6 @@ namespace vix::orm
     const ConnectionPtr &ptr() const { return c_; }
   };
 
-} // namespace vix::orm
+} // namespace vix::db
 
 #endif // VIX_ORM_CONNECTION_POOL_HPP

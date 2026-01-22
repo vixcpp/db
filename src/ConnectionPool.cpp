@@ -10,9 +10,9 @@
  *
  *  Vix.cpp
  */
-#include <vix/orm/ConnectionPool.hpp>
+#include <vix/db/ConnectionPool.hpp>
 
-namespace vix::orm
+namespace vix::db
 {
   ConnectionPtr ConnectionPool::acquire()
   {
@@ -62,4 +62,4 @@ namespace vix::orm
     }
   }
 
-} // namespace vix::orm
+} // namespace vix::db

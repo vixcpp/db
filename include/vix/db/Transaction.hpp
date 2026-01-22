@@ -13,9 +13,9 @@
 #ifndef VIX_TRANSACTION_HPP
 #define VIX_TRANSACTION_HPP
 
-#include <vix/orm/ConnectionPool.hpp>
+#include <vix/db/ConnectionPool.hpp>
 
-namespace vix::orm
+namespace vix::db
 {
   class Transaction
   {
@@ -55,6 +55,6 @@ namespace vix::orm
 
     Connection &conn() { return pooled_.get(); }
   };
-} // namespace Vix::orm
+} // namespace vix::db
 
 #endif // VIX_TRANSACTION_HPP

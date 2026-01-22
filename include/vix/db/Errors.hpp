@@ -16,7 +16,7 @@
 #include <string>
 #include <stdexcept>
 
-namespace vix::orm
+namespace vix::db
 {
   struct DBError : std::runtime_error
   {
@@ -32,6 +32,6 @@ namespace vix::orm
   {
     using DBError::DBError;
   };
-} // namespace Vix::orm
+} // namespace vix::db
 
 #endif // VIX_ERRORS_HPP

@@ -14,9 +14,9 @@
 #define VIX_MIGRATION_HPP
 
 #include <string>
-#include <vix/orm/Drivers.hpp>
+#include <vix/db/Drivers.hpp>
 
-namespace vix::orm
+namespace vix::db
 {
   struct Migration
   {
@@ -25,6 +25,6 @@ namespace vix::orm
     virtual void up(Connection &c) = 0;
     virtual void down(Connection &c) = 0;
   };
-} // namespace Vix::orm
+} // namespace vix::db
 
 #endif // VIX_MIGRATION_HPP

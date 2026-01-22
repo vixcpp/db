@@ -10,16 +10,16 @@
  *
  *  Vix.cpp
  */
-#include <vix/orm/FileMigrationsRunner.hpp>
-#include <vix/orm/Errors.hpp>
-#include <vix/orm/Sha256.hpp>
+#include <vix/db/FileMigrationsRunner.hpp>
+#include <vix/db/Errors.hpp>
+#include <vix/db/Sha256.hpp>
 
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 #include <unordered_map>
 
-namespace vix::orm
+namespace vix::db
 {
   static std::string now_text()
   {

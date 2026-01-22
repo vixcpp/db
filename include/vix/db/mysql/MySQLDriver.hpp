@@ -15,7 +15,7 @@
 
 #if VIX_ORM_HAS_MYSQL
 
-#include <vix/orm/Drivers.hpp>
+#include <vix/db/Drivers.hpp>
 
 #include <cppconn/connection.h>
 #include <cppconn/prepared_statement.h>
@@ -25,7 +25,7 @@
 #include <memory>
 #include <string>
 
-namespace vix::orm
+namespace vix::db
 {
   class MySQLConnection final : public Connection
   {

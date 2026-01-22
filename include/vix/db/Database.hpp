@@ -14,14 +14,14 @@
 #define VIX_ORM_DATABASE_HPP
 
 #include <string>
-#include <vix/orm/ConnectionPool.hpp>
+#include <vix/db/ConnectionPool.hpp>
 
 namespace vix::config
 {
   class Config;
 }
 
-namespace vix::orm
+namespace vix::db
 {
   enum class Engine
   {
@@ -69,6 +69,6 @@ namespace vix::orm
     ConnectionPool pool_;
   };
 
-} // namespace vix::orm
+} // namespace vix::db
 
 #endif // VIX_ORM_DATABASE_HPP

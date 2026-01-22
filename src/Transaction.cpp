@@ -10,4 +10,4 @@
  *
  *  Vix.cpp
  */
-#include <vix/orm/Transaction.hpp>
+#include <vix/db/Transaction.hpp>

@@ -10,9 +10,9 @@
  *
  *  Vix.cpp
  */
-#include <vix/orm/MigrationsRunner.hpp>
+#include <vix/db/MigrationsRunner.hpp>
 
-namespace vix::orm
+namespace vix::db
 {
   void MigrationsRunner::runAll()
   {
@@ -21,4 +21,4 @@ namespace vix::orm
       m->up(conn_);
     }
   }
-} // namespace Vix::orm
+} // namespace vix::db

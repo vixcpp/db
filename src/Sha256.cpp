@@ -10,10 +10,10 @@
  *
  *  Vix.cpp
  */
-#include <vix/orm/Sha256.hpp>
+#include <vix/db/Sha256.hpp>
 #include <cstring>
 
-namespace vix::orm
+namespace vix::db
 {
   static constexpr std::array<std::uint32_t, 64> K = {
       0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,

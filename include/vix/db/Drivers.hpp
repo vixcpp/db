@@ -22,7 +22,7 @@
 #include <memory>
 #include <functional>
 
-namespace vix::orm
+namespace vix::db
 {
   struct ResultRow
   {
@@ -68,6 +68,6 @@ namespace vix::orm
       std::string pass,
       std::string db);
 
-} // namespace vix::orm
+} // namespace vix::db
 
 #endif // VIX_ORM_DRIVERS_HPP

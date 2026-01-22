@@ -10,16 +10,16 @@
  *
  *  Vix.cpp
  */
-#include <vix/orm/Database.hpp>
+#include <vix/db/Database.hpp>
 #if VIX_ORM_HAS_MYSQL
-#include <vix/orm/MySQLDriver.hpp>
+#include <vix/db/MySQLDriver.hpp>
 #endif
 #include <vix/config/Config.hpp>
 
 #include <stdexcept>
 #include <utility>
 
-namespace vix::orm
+namespace vix::db
 {
 #if VIX_ORM_HAS_MYSQL
   ConnectionFactory make_mysql_factory(const MySQLConfig &cfg)
@@ -101,4 +101,4 @@ namespace vix::orm
     pool_.warmup();
   }
 
-} // namespace vix::orm
+} // namespace vix::db

@@ -13,14 +13,14 @@
 #ifndef VIX_FILE_MIGRATIONS_RUNNER_HPP
 #define VIX_FILE_MIGRATIONS_RUNNER_HPP
 
-#include <vix/orm/Drivers.hpp>
+#include <vix/db/Drivers.hpp>
 
 #include <filesystem>
 #include <string>
 #include <vector>
 #include <cstdint>
 
-namespace vix::orm
+namespace vix::db
 {
   struct MigrationPair
   {

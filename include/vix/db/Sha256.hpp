@@ -18,7 +18,7 @@
 #include <string>
 #include <string_view>
 
-namespace vix::orm
+namespace vix::db
 {
   class Sha256
   {

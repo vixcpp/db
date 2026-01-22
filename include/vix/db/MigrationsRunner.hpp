@@ -13,10 +13,10 @@
 #ifndef VIX_MIGRATIONS_RUNNER_HPP
 #define VIX_MIGRATIONS_RUNNER_HPP
 
-#include <vix/orm/Migration.hpp>
+#include <vix/db/Migration.hpp>
 #include <vector>
 
-namespace vix::orm
+namespace vix::db
 {
   class MigrationsRunner
   {
@@ -28,6 +28,6 @@ namespace vix::orm
     void add(Migration *m) { migs_.push_back(m); }
     void runAll();
   };
-} // namespace Vix::orm
+} // namespace vix::db
 
 #endif // VIX_MIGRATIONS_RUNNER_HPP
