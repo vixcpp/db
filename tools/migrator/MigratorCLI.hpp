@@ -28,11 +28,17 @@ namespace vix::db::tools
       std::string pass;
       std::string db;
 
-      std::string command; // migrate | rollback | status
+      std::string command; // migrate | rollback | status | makemigrations
       std::string migrationsDir = "migrations";
 
       int steps = 0; // rollback steps
       bool help = false;
+
+      // makemigrations options
+      std::string snapshotPath = "schema.json"; // schema snapshot (old -> updated)
+      std::string newSchemaPath;                // required: schema.new.json
+      std::string name = "auto";                // label in filename
+      std::string dialect = "mysql";            // mysql | sqlite (mysql only for now)
     };
 
     static int run(int argc, char **argv);
@@ -42,8 +48,9 @@ namespace vix::db::tools
 
     static Options parseArgsOrThrow(int argc, char **argv);
 
-    static std::string getFlagValue(const std::vector<std::string> &args,
-                                    const std::string &key);
+    static std::string getFlagValue(
+        const std::vector<std::string> &args,
+        const std::string &key);
 
     static bool hasFlag(const std::vector<std::string> &args,
                         const std::string &key);

@@ -18,7 +18,9 @@ include(GNUInstallDirs)
 # ------------------------------------------------------------------------------
 option(VIX_DB_BUILD_TESTS       "Build unit tests for Vix DB"                 OFF)
 option(VIX_DB_BUILD_EXAMPLES    "Build examples for Vix DB"                  OFF)
-option(VIX_DB_BUILD_TOOLS       "Build DB CLI tools (migrator)"              OFF)
+if (DEFINED VIX_UMBRELLA_BUILD)
+  set(VIX_DB_BUILD_TOOLS ON CACHE BOOL "Build DB CLI tools (migrator)" FORCE)
+endif()
 
 # SQL engines (drivers)
 option(VIX_DB_USE_MYSQL         "Enable MySQL Connector/C++ driver"          ON)
@@ -222,6 +224,9 @@ set(VIX_DB_SOURCES
   src/mig/MigrationsRunner.cpp
   src/mig/FileMigrationsRunner.cpp
   src/Sha256.cpp
+  src/schema/Json.cpp
+  src/mig/diff/Diff.cpp
+  src/mig/sql/MySqlGenerator.cpp
 )
 
 # MySQL driver sources
@@ -261,6 +266,7 @@ if (VIX_DB_BUILD_TOOLS)
   target_sources(vix_db_migrator PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/tools/migrator/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/tools/migrator/MigratorCLI.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/migrator/MakeMigrations.cpp
   )
 
   target_link_libraries(vix_db_migrator PRIVATE vix::db)
