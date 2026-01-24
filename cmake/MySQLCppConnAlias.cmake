@@ -78,6 +78,22 @@ if (NOT MYSQLCPPCONN_LIB OR NOT MYSQLCPPCONN_INCLUDE_DIR)
   return()
 endif()
 
+# ------------------------------------------------------------------------------
+# Validate that the picked library really provides the symbol we need.
+# Avoid "half-found" connector variants that compile but fail at link time.
+# ------------------------------------------------------------------------------
+if (UNIX AND EXISTS "${MYSQLCPPCONN_LIB}")
+  execute_process(
+    COMMAND bash -c "nm -D \"${MYSQLCPPCONN_LIB}\" 2>/dev/null | grep -q \"get_driver_instance\""
+    RESULT_VARIABLE _vix_mysql_has_symbol
+  )
+  if (NOT _vix_mysql_has_symbol EQUAL 0)
+    message(WARNING "[vix_db] MySQLCppConn fallback: '${MYSQLCPPCONN_LIB}' does not export get_driver_instance(). Disabling MySQL driver.")
+    unset(MYSQLCPPCONN_LIB CACHE)
+    return()
+  endif()
+endif()
+
 # Define imported target
 add_library(MySQLCppConn::MySQLCppConn UNKNOWN IMPORTED)
 

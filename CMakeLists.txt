@@ -77,6 +77,12 @@ if (VIX_DB_USE_MYSQL)
   if (TARGET MySQLCppConn::MySQLCppConn)
     set(VIX_DB_HAS_MYSQL ON)
     message(STATUS "[vix_db] mysql: enabled (alias)")
+    get_target_property(_vix_mysql_loc MySQLCppConn::MySQLCppConn IMPORTED_LOCATION)
+    if (NOT _vix_mysql_loc)
+      message(WARNING "[vix_db] mysql: alias target exists but has no IMPORTED_LOCATION. Disabling.")
+      set(VIX_DB_HAS_MYSQL OFF)
+      set(VIX_DB_USE_MYSQL OFF)
+    endif()
   else()
     if (VIX_DB_REQUIRE_MYSQL)
       message(FATAL_ERROR "[vix_db] mysql requested but Connector/C++ not found (VIX_DB_REQUIRE_MYSQL=ON).")
@@ -342,7 +348,20 @@ endif()
 # Link drivers (single source of truth)
 # ------------------------------------------------------------------------------
 if (VIX_DB_HAS_MYSQL)
-  target_link_libraries(vix_db PUBLIC MySQLCppConn::MySQLCppConn)
+  # Flatten the imported target into real link flags so consumers
+  # always link the connector (important for static vix_db).
+  get_target_property(_vix_mysql_lib MySQLCppConn::MySQLCppConn IMPORTED_LOCATION)
+  get_target_property(_vix_mysql_inc MySQLCppConn::MySQLCppConn INTERFACE_INCLUDE_DIRECTORIES)
+
+  if (NOT _vix_mysql_lib)
+    message(FATAL_ERROR "[vix_db] mysql enabled but MySQLCppConn::MySQLCppConn has no IMPORTED_LOCATION")
+  endif()
+
+  target_link_libraries(vix_db PUBLIC "${_vix_mysql_lib}")
+
+  if (_vix_mysql_inc)
+    target_include_directories(vix_db PUBLIC "${_vix_mysql_inc}")
+  endif()
 endif()
 
 if (VIX_DB_HAS_SQLITE)
