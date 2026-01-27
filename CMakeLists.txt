@@ -9,7 +9,9 @@
 #  Vix.cpp | DB module (core anti-ORM)
 cmake_minimum_required(VERSION 3.20)
 
-project(vix_db VERSION 0.1.0 LANGUAGES CXX)
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  project(vix_db VERSION 0.1.0 LANGUAGES CXX)
+endif()
 
 include(GNUInstallDirs)
 
