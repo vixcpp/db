@@ -1,0 +1,29 @@
+{
+  "name": "db",
+  "namespace": "vix",
+  "version": "0.1.0",
+  "type": "header-and-source",
+  "include": "include",
+  "src": "src",
+  "license": "MIT",
+  "description": "Vix.cpp DB core (anti-ORM): drivers, pool, transactions, migrations.",
+  "keywords": [
+    "cpp",
+    "vix",
+    "db",
+    "database",
+    "drivers",
+    "pool",
+    "transactions",
+    "migrations",
+    "anti-ORM",
+    "core"
+  ],
+  "repository": "https://github.com/vixcpp/db",
+  "authors": [
+    {
+      "name": "Gaspard Kirira",
+      "github": "Gaspardkirira"
+    }
+  ]
+}
