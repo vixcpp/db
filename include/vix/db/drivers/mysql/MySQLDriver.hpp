@@ -22,20 +22,26 @@
 #include <cppconn/connection.h>
 #include <mysql_driver.h>
 
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <utility>
 
 namespace vix::db
 {
   /**
    * @brief MySQL implementation of a database connection.
    *
-   * MySQLConnection is a concrete Connection backed by the MySQL
-   * Connector/C++ driver. It adapts the native MySQL API to the
-   * generic vix::db::Connection interface.
+   * MySQLConnection is a concrete implementation of the generic
+   * vix::db::Connection interface backed by MySQL Connector/C++.
    *
-   * This class is not copyable and is intended to be managed via
-   * smart pointers.
+   * It adapts the native MySQL driver API to the uniform Vix database
+   * abstraction so higher-level layers such as ORM, repositories, and
+   * connection pools can work without depending directly on MySQL APIs.
+   *
+   * This type is intended to be managed through smart pointers.
    */
   class MySQLConnection final : public Connection
   {
@@ -45,7 +51,7 @@ namespace vix::db
     /**
      * @brief Construct a MySQL connection wrapper.
      *
-     * @param c Shared pointer to a native MySQL Connector/C++ connection.
+     * @param c Shared pointer to the native MySQL connection.
      */
     explicit MySQLConnection(std::shared_ptr<sql::Connection> c)
         : conn_(std::move(c)) {}
@@ -53,8 +59,11 @@ namespace vix::db
     /**
      * @brief Prepare a SQL statement.
      *
-     * @param sql SQL query string (UTF-8).
-     * @return Owning pointer to a prepared Statement.
+     * Converts a SQL string into a prepared statement handled by the
+     * underlying MySQL driver.
+     *
+     * @param sql SQL query string.
+     * @return Owning pointer to a prepared statement.
      */
     std::unique_ptr<Statement> prepare(std::string_view sql) override;
 
@@ -63,12 +72,15 @@ namespace vix::db
      *
      * Internally disables autocommit on the MySQL connection.
      */
-    void begin() override { conn_->setAutoCommit(false); }
+    void begin() override
+    {
+      conn_->setAutoCommit(false);
+    }
 
     /**
      * @brief Commit the current transaction.
      *
-     * Autocommit is re-enabled after a successful commit.
+     * Commits the transaction and restores autocommit mode.
      */
     void commit() override
     {
@@ -79,7 +91,7 @@ namespace vix::db
     /**
      * @brief Roll back the current transaction.
      *
-     * Autocommit is re-enabled after a rollback.
+     * Rolls back the transaction and restores autocommit mode.
      */
     void rollback() override
     {
@@ -88,16 +100,22 @@ namespace vix::db
     }
 
     /**
-     * @brief Return the last auto-incremented identifier.
+     * @brief Return the last auto-generated insert identifier.
+     *
+     * Typically used after an INSERT statement on a table with an
+     * auto-increment primary key.
      *
      * @return Last generated insert ID.
      */
     std::uint64_t lastInsertId() override;
 
     /**
-     * @brief Check whether the underlying MySQL connection is valid.
+     * @brief Check whether the underlying MySQL connection is alive.
      *
-     * @return true if the connection is usable, false otherwise.
+     * This method is used by higher-level systems such as connection
+     * pools to validate a connection before reuse.
+     *
+     * @return true if the connection is valid, false otherwise.
      */
     bool ping() override
     {
@@ -114,24 +132,33 @@ namespace vix::db
     /**
      * @brief Access the underlying native MySQL connection.
      *
-     * Intended for advanced or driver-specific use cases.
+     * This is intended for advanced or driver-specific integration
+     * scenarios that require direct access to Connector/C++ APIs.
      *
-     * @return Shared pointer to the native sql::Connection.
+     * @return Const reference to the wrapped native connection.
      */
-    const std::shared_ptr<sql::Connection> &raw() const { return conn_; }
+    const std::shared_ptr<sql::Connection> &raw() const
+    {
+      return conn_;
+    }
   };
 
   /**
    * @brief Create a native MySQL connection.
    *
-   * Establishes a connection to a MySQL server using the
-   * Connector/C++ driver.
+   * Establishes a connection to a MySQL server using MySQL Connector/C++.
+   * If a database name is provided, the connection schema is set
+   * immediately after connection.
    *
-   * @param host Database host.
-   * @param user Username.
-   * @param pass Password.
-   * @param db   Database name.
-   * @return Shared pointer to a native MySQL connection.
+   * This function returns the native driver connection and is mainly
+   * intended for low-level use or for building higher-level Vix
+   * abstractions.
+   *
+   * @param host Database server host string.
+   * @param user Database username.
+   * @param pass Database password.
+   * @param db   Database name to select after connection.
+   * @return Shared pointer to the native MySQL connection.
    */
   std::shared_ptr<sql::Connection>
   make_mysql_conn(const std::string &host,
@@ -140,15 +167,20 @@ namespace vix::db
                   const std::string &db);
 
   /**
-   * @brief Create a connection factory for MySQL connections.
+   * @brief Create a Vix-compatible connection factory for MySQL.
    *
-   * Returns a callable that produces new MySQL-backed
-   * vix::db::Connection instances. This is typically used
-   * by connection pools or dependency injection systems.
+   * Returns a callable factory that creates MySQL-backed
+   * vix::db::Connection instances. This is the preferred entry point
+   * for systems such as ConnectionPool, repositories, dependency
+   * injection containers, and higher-level database bootstrapping.
    *
-   * @param host Database host.
-   * @param user Username.
-   * @param pass Password.
+   * By exposing a factory instead of a raw connection, Vix keeps the
+   * complexity of driver instantiation inside the framework and allows
+   * examples and applications to stay minimal.
+   *
+   * @param host Database server host string.
+   * @param user Database username.
+   * @param pass Database password.
    * @param db   Database name.
    * @return Factory function producing Connection instances.
    */

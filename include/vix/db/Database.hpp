@@ -15,7 +15,9 @@
 #ifndef VIX_DB_DATABASE_HPP
 #define VIX_DB_DATABASE_HPP
 
+#include <memory>
 #include <string>
+
 #include <vix/db/pool/ConnectionPool.hpp>
 
 namespace vix::config
@@ -30,10 +32,7 @@ namespace vix::db
    */
   enum class Engine
   {
-    /// MySQL-compatible database engine
     MySQL,
-
-    /// SQLite embedded database engine
     SQLite
   };
 
@@ -42,19 +41,10 @@ namespace vix::db
    */
   struct MySQLConfig
   {
-    /// Database host
-    std::string host;
-
-    /// Username
-    std::string user;
-
-    /// Password
-    std::string password;
-
-    /// Database name
-    std::string database;
-
-    /// Connection pool configuration
+    std::string host{"tcp://127.0.0.1:3306"};
+    std::string user{"root"};
+    std::string password{};
+    std::string database{};
     PoolConfig pool{};
   };
 
@@ -63,96 +53,92 @@ namespace vix::db
    */
   struct SQLiteConfig
   {
-    /// Path to the SQLite database file
-    std::string path;
-
-    /// Connection pool configuration
+    std::string path{"vix.db"};
     PoolConfig pool{};
   };
 
   /**
    * @brief Unified database configuration.
-   *
-   * Holds engine-specific configuration while exposing a single
-   * entry point for database initialization.
    */
   struct DbConfig
   {
-    /// Selected database engine
-    Engine engine{Engine::MySQL};
+    Engine engine{Engine::SQLite}; // 👈 IMPORTANT: SQLite par défaut
 
-    /// MySQL-specific configuration
     MySQLConfig mysql{};
-
-    /// SQLite-specific configuration
     SQLiteConfig sqlite{};
   };
 
   /**
-   * @brief Build a database configuration from a Vix configuration.
-   *
-   * Extracts database-related settings from a vix::config::Config
-   * instance and maps them to a DbConfig structure.
-   *
-   * @param cfg Vix configuration object.
-   * @return Parsed database configuration.
+   * @brief Build a DbConfig from a Vix configuration object.
    */
   DbConfig make_db_config_from_vix_config(const vix::config::Config &cfg);
 
   /**
    * @brief High-level database facade.
    *
-   * Database owns the connection pool and exposes access to it,
-   * providing a unified entry point for database access within
-   * the application.
+   * This is the main entry point for database usage in Vix.
    *
-   * Engine selection and driver wiring are performed at construction
-   * time based on the provided DbConfig.
+   * Responsibilities:
+   * - Select the correct driver (MySQL / SQLite)
+   * - Build the connection factory
+   * - Initialize and manage the connection pool
+   *
+   * The goal is to hide all driver-level complexity from the user.
    */
   class Database
   {
   public:
     /**
-     * @brief Construct a database instance.
-     *
-     * Initializes the underlying connection pool according to
-     * the selected engine and configuration.
+     * @brief Construct a database instance from configuration.
      *
      * @param cfg Database configuration.
      */
     explicit Database(const DbConfig &cfg);
 
     /**
+     * @brief Create a MySQL database instance (ultra simple API).
+     */
+    static Database mysql(std::string host,
+                          std::string user,
+                          std::string password,
+                          std::string database,
+                          PoolConfig pool = {});
+
+    /**
+     * @brief Create a SQLite database instance (ultra simple API).
+     */
+    static Database sqlite(std::string path,
+                           PoolConfig pool = {});
+
+    /**
      * @brief Return the selected database engine.
-     *
-     * @return Database engine.
      */
     Engine engine() const noexcept { return cfg_.engine; }
 
     /**
-     * @brief Access the database configuration.
-     *
-     * @return Database configuration.
+     * @brief Access database configuration.
      */
     const DbConfig &config() const noexcept { return cfg_; }
 
     /**
      * @brief Access the connection pool.
-     *
-     * @return Reference to the connection pool.
      */
-    ConnectionPool &pool() noexcept { return pool_; }
+    ConnectionPool &pool() noexcept { return *pool_; }
 
     /**
      * @brief Access the connection pool (const).
-     *
-     * @return Const reference to the connection pool.
      */
-    const ConnectionPool &pool() const noexcept { return pool_; }
+    const ConnectionPool &pool() const noexcept { return *pool_; }
 
   private:
     DbConfig cfg_;
-    ConnectionPool pool_;
+
+    /**
+     * IMPORTANT:
+     * On utilise un shared_ptr car ConnectionPool contient mutex + cv
+     * donc non copiable.
+     */
+    std::shared_ptr<ConnectionPool> pool_;
   };
 
 } // namespace vix::db
