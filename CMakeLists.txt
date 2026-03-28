@@ -243,9 +243,9 @@ if (VIX_DB_HAS_MYSQL)
   list(APPEND VIX_DB_SOURCES        src/mysql/MySQLDriver.cpp)
 endif()
 
-# SQLite driver sources (future: create include/vix/db/sqlite/SQLiteDriver.hpp + src/sqlite/SQLiteDriver.cpp)
+# SQLite driver sources
 if (VIX_DB_HAS_SQLITE)
-  list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/sqlite/SQLiteDriver.hpp)
+  list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/drivers/sqlite/SQLiteDriver.hpp)
   list(APPEND VIX_DB_SOURCES        src/sqlite/SQLiteDriver.cpp)
 endif()
 
