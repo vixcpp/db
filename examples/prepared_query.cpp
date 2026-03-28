@@ -1,32 +1,50 @@
-#include <vix/db/db.hpp>
+#include <cstdint>
 #include <iostream>
-
-using namespace vix::db;
+#include <vix/db/db.hpp>
 
 int main()
 {
-  DbConfig cfg;
-  cfg.engine = Engine::MySQL;
-  cfg.mysql.host = "tcp://127.0.0.1:3306";
-  cfg.mysql.user = "root";
-  cfg.mysql.password = "";
-  cfg.mysql.database = "vixdb";
-  cfg.mysql.pool.min = 1;
-  cfg.mysql.pool.max = 8;
-
-  Database db(cfg);
-
-  auto conn = db.pool().acquire();
-  auto st = conn->prepare("SELECT id, name FROM users WHERE age > ?");
-
-  st->bind(1, 18);
-  // or: st->bind(1, std::int64_t{18});
-  // or: st->bind(1, i64(18));
-
-  auto rs = st->query();
-  while (rs->next())
+  try
   {
-    const auto &row = rs->row();
-    std::cout << row.getInt64(0) << " " << row.getString(1) << "\n";
+    auto db = vix::db::Database::sqlite("vix.db");
+
+    {
+      auto conn = db.pool().acquire();
+
+      conn->prepare(
+              "CREATE TABLE IF NOT EXISTS users ("
+              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+              "name TEXT NOT NULL, "
+              "age INTEGER NOT NULL)")
+          ->exec();
+
+      auto insert = conn->prepare(
+          "INSERT INTO users (name, age) VALUES (?, ?)");
+
+      insert->bind(1, std::string("Alice"));
+      insert->bind(2, static_cast<std::int64_t>(20));
+      insert->exec();
+    }
+
+    {
+      auto conn = db.pool().acquire();
+      auto st = conn->prepare("SELECT id, name FROM users WHERE age > ?");
+
+      st->bind(1, static_cast<std::int64_t>(18));
+
+      auto rs = st->query();
+      while (rs->next())
+      {
+        const auto &row = rs->row();
+        std::cout << row.getInt64(0) << " " << row.getString(1) << "\n";
+      }
+    }
+
+    return 0;
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "DB error: " << e.what() << "\n";
+    return 1;
   }
 }

@@ -1,26 +1,25 @@
-#include <vix/db/db.hpp>
 #include <iostream>
-
-using namespace vix::db;
+#include <vix/db/db.hpp>
 
 int main()
 {
-  DbConfig cfg;
-  cfg.engine = Engine::MySQL;
-  cfg.mysql.host = "tcp://127.0.0.1:3306";
-  cfg.mysql.user = "root";
-  cfg.mysql.password = "";
-  cfg.mysql.database = "vixdb";
-
-  Database db(cfg);
-
-  auto conn = db.pool().acquire();
-  if (!conn->ping())
+  try
   {
-    std::cerr << "DB ping failed\n";
+    auto db = vix::db::Database::sqlite("vix.db");
+
+    auto conn = db.pool().acquire();
+    if (!conn->ping())
+    {
+      std::cerr << "DB ping failed\n";
+      return 1;
+    }
+
+    std::cout << "DB connected successfully\n";
+    return 0;
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "DB error: " << e.what() << "\n";
     return 1;
   }
-
-  std::cout << "DB connected successfully\n";
-  return 0;
 }
