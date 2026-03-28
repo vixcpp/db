@@ -1,8 +1,8 @@
 # Vix DB
 
 <p align="center">
-  <strong>Low-level database layer for serious C++ systems</strong><br/>
-  Deterministic · Explicit · No magic
+  <strong>The explicit database layer for modern C++ systems</strong><br/>
+  Deterministic · Predictable · No magic
 </p>
 
 <p align="center">
@@ -17,55 +17,63 @@
 
 **Vix DB** is the database foundation of **Vix.cpp**.
 
-It provides a **minimal, explicit, and predictable** interface to databases,
-designed for developers who care about:
+It gives you a **direct, explicit, and predictable way** to work with databases in C++ without hiding anything.
 
-- performance
-- control
-- correctness
-- long-term maintainability
+```cpp
+auto db = vix::db::Database::sqlite("vix.db");
 
-Vix DB is **not an ORM**.
-It is the layer that makes **reliable data access possible** in real systems.
+auto conn = db.pool().acquire();
+conn->prepare("SELECT 1")->exec();
+```
 
----
-
-## Why a dedicated DB module?
-
-Most database abstractions today:
-
-- hide SQL behind heavy layers
-- introduce unpredictable behavior
-- make performance harder to reason about
-- tightly couple your code to a framework
-
-Vix DB takes the opposite approach.
-
-> **No magic. No hidden queries. No surprises.**
-
-You decide:
-- what SQL runs
-- when transactions start and end
-- how connections are pooled
-- how migrations are applied
+No setup. No hidden layers. No surprises.
 
 ---
 
-## Designed for real-world conditions
+## The problem with existing abstractions
 
-Vix DB is built with the same philosophy as the rest of Vix.cpp:
+Most database tools today:
 
-- systems that must run **under load**
-- environments with **limited resources**
-- deployments where **debuggability matters**
-- teams that want **long-term stability**
+- hide SQL behind heavy abstractions
+- introduce implicit behavior
+- make performance unpredictable
+- couple your code to a framework
 
-This makes it suitable for:
-- backend services
-- edge systems
-- offline-first applications
-- P2P or distributed runtimes
-- performance-critical APIs
+This creates systems that are:
+
+- harder to debug
+- harder to optimize
+- harder to maintain over time
+
+---
+
+## The Vix approach
+
+Vix DB does the opposite.
+
+> You control everything. The system stays transparent.
+
+- SQL is explicit
+- transactions are explicit
+- connections are explicit
+- behavior is deterministic
+
+No hidden queries. No implicit state. No magic.
+
+---
+
+## Designed for real systems
+
+Vix DB is built for environments where things actually matter:
+
+- high-load backend services
+- edge and offline-first systems
+- unreliable networks
+- long-running production systems
+
+This aligns directly with the philosophy behind **Vix.cpp** and **Softadastra**:
+
+> Systems must keep working, even when conditions are not ideal.
 
 ---
 
@@ -73,73 +81,192 @@ This makes it suitable for:
 
 Vix DB focuses on **fundamentals done right**:
 
-- connection pooling
-- explicit transactions
+- connection pooling (thread-safe)
+- explicit transactions (RAII)
+- prepared statements
 - deterministic query execution
-- migrations support
-- clean driver boundaries
-- zero runtime reflection
-- zero garbage collection
+- migration system (code + files)
+- clean driver abstraction (MySQL, SQLite)
+- zero runtime overhead
+- zero hidden allocations
 
-Everything is **opt-in** and **pay-for-what-you-use**.
+Everything is:
+
+> **opt-in · explicit · predictable**
 
 ---
 
-## ORM is optional — by design
+## Ultra simple API
 
-If you like higher-level abstractions, Vix.cpp provides an optional ORM layer.
+All complexity is inside Vix.
+Your code stays minimal.
 
-If you don’t, **Vix DB works perfectly on its own**.
+### SQLite
 
-This separation ensures:
-- no forced abstractions
-- no performance tax
-- no lock-in
+```cpp
+auto db = vix::db::Database::sqlite("vix.db");
+```
 
-You choose the level of abstraction — not the framework.
+### MySQL
+
+```cpp
+auto db = vix::db::Database::mysql(
+  "tcp://127.0.0.1:3306",
+  "root",
+  "",
+  "vixdb"
+);
+```
+
+### Query
+
+```cpp
+auto conn = db.pool().acquire();
+
+auto st = conn->prepare("SELECT id, name FROM users WHERE age > ?");
+st->bind(1, std::int64_t(18));
+
+auto rs = st->query();
+while (rs->next())
+{
+  const auto &row = rs->row();
+  std::cout << row.getInt64(0) << " " << row.getString(1) << "\n";
+}
+```
+
+---
+
+## Transactions (RAII)
+
+```cpp
+vix::db::Transaction tx(db.pool());
+
+tx.conn().prepare("INSERT INTO users (name) VALUES (?)")
+    ->bind(1, std::string("Alice"))
+    ->exec();
+
+tx.commit();
+```
+
+---
+
+## Migrations
+
+Supports both:
+
+- code-based migrations
+- file-based migrations
+
+```cpp
+vix::db::MigrationsRunner runner(conn);
+runner.runAll();
+```
+
+---
+
+## ORM is optional
+
+Vix DB is **not an ORM**.
+
+It is the **foundation layer**.
+
+If you want higher-level abstractions, Vix provides an optional ORM module.
+
+If you don’t:
+
+> Vix DB is complete on its own.
+
+No forced abstraction. No lock-in.
 
 ---
 
 ## Built for modern C++
 
 - C++20
+- RAII everywhere
 - explicit ownership
-- RAII-based resource management
-- predictable lifetimes
+- no hidden lifetimes
 - clean error handling
 
-If you enjoy writing **clear, intentional C++**, Vix DB will feel natural.
+If you like **clear and intentional C++**, this will feel natural.
 
 ---
 
-## Part of the Vix.cpp ecosystem
+## Architecture
 
-Vix DB is a core module of **Vix.cpp**, the offline-first, peer-to-peer,
-ultra-fast C++ runtime.
+```text
+Drivers (MySQL / SQLite)
+        ↓
+Connection Pool
+        ↓
+Database (Facade)
+        ↓
+Your code / ORM (optional)
+```
 
-It integrates seamlessly with:
+Clear layers. No coupling. No surprises.
+
+---
+
+## Part of Vix.cpp
+
+Vix DB is part of **Vix.cpp**, an offline-first, peer-to-peer, high-performance C++ runtime.
+
+It integrates with:
+
 - Vix Core
 - Vix CLI
-- optional ORM layer
-- WebSocket & network modules
+- ORM (optional)
+- WebSocket / networking
+- future distributed systems (Softadastra)
 
 ---
 
 ## Getting started
 
-Vix DB is built automatically when enabled through the Vix.cpp umbrella.
+Build with examples:
 
-See the main repository for installation, CLI usage, and examples.
+```bash
+cmake -S . -B build -DVIX_DB_BUILD_EXAMPLES=ON -DVIX_DB_USE_SQLITE=ON
+cmake --build build
+```
 
-👉 https://github.com/vixcpp/vix
+Run:
+
+```bash
+./build/examples/vix_db_example_sqlite_basic
+```
+
+---
+
+## Why Vix DB matters
+
+This is not just another DB wrapper.
+
+It is part of a bigger vision:
+
+> Rebuilding reliable systems for real-world conditions.
+
+- explicit control
+- deterministic behavior
+- offline-first ready
+- production-first mindset
 
 ---
 
 ## ⭐ Support the project
 
-If you believe C++ deserves modern, serious infrastructure —
-and databases deserve explicit control —
+If you believe:
 
-please consider starring **Vix.cpp**.
+- C++ deserves modern infrastructure
+- systems should be predictable
+- databases should not hide behavior
+
+then consider starring the project.
+
+👉 https://github.com/vixcpp/vix
+
+---
 
 MIT License
+
