@@ -280,6 +280,10 @@ if (VIX_DB_BUILD_TOOLS)
   target_link_libraries(vix_db_migrator PRIVATE vix::db)
   target_compile_features(vix_db_migrator PRIVATE cxx_std_20)
 
+  if (COMMAND vix_enable_sanitizers)
+    vix_enable_sanitizers(vix_db_migrator)
+  endif()
+
   if (MSVC)
     target_compile_options(vix_db_migrator PRIVATE ${_WARNINGS_MSVC})
   else()
@@ -304,6 +308,10 @@ endif()
 add_library(vix_db STATIC ${VIX_DB_SOURCES} ${VIX_DB_PUBLIC_HEADERS})
 add_library(vix::db ALIAS vix_db)
 
+if (COMMAND vix_enable_sanitizers)
+  vix_enable_sanitizers(vix_db)
+endif()
+
 # Keep feature macros consistent everywhere (build + consumers)
 target_compile_definitions(vix_db PUBLIC
   VIX_DB_HAS_MYSQL=$<BOOL:${VIX_DB_HAS_MYSQL}>
@@ -322,11 +330,6 @@ target_include_directories(vix_db PUBLIC
 
 # DB depends on Vix Core (Config.hpp, util, etc.)
 target_link_libraries(vix_db PUBLIC vix::core)
-
-# Inherit umbrella sanitizers if present
-if (VIX_ENABLE_SANITIZERS AND TARGET vix_sanitizers)
-  target_link_libraries(vix_db PUBLIC vix_sanitizers)
-endif()
 
 if (MSVC)
   target_compile_options(vix_db PRIVATE ${_WARNINGS_MSVC})
