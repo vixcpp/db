@@ -340,13 +340,11 @@ endif()
 # deps / defines
 if (spdlog_FOUND)
   if (TARGET spdlog::spdlog_header_only)
-    target_link_libraries(vix_db PUBLIC spdlog::spdlog_header_only)
+    target_link_libraries(vix_db PRIVATE spdlog::spdlog_header_only)
   elseif (TARGET spdlog::spdlog)
-    target_link_libraries(vix_db PUBLIC spdlog::spdlog)
+    target_link_libraries(vix_db PRIVATE spdlog::spdlog)
   endif()
   target_compile_definitions(vix_db PUBLIC VIX_DB_HAS_SPDLOG=1)
-else()
-  target_compile_definitions(vix_db PUBLIC VIX_DB_NO_LOGGER=1)
 endif()
 
 # ------------------------------------------------------------------------------
