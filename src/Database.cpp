@@ -24,18 +24,45 @@
 
 #include <vix/config/Config.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace vix::db
 {
+  namespace
+  {
+    [[nodiscard]] std::string to_lower_ascii(std::string value)
+    {
+      std::transform(
+          value.begin(),
+          value.end(),
+          value.begin(),
+          [](unsigned char c)
+          { return static_cast<char>(std::tolower(c)); });
+
+      return value;
+    }
+
+    [[nodiscard]] std::string build_mysql_host_string(
+        const std::string &host,
+        int port)
+    {
+      return "tcp://" + host + ":" + std::to_string(port);
+    }
+  } // namespace
+
   DbConfig make_db_config_from_vix_config(const vix::config::Config &cfg)
   {
     DbConfig out;
 
-    const auto engineStr = cfg.getString("db.engine", "sqlite");
-    if (engineStr == "mysql")
+    const std::string engine_str =
+        to_lower_ascii(cfg.getString("database.engine", "sqlite"));
+
+    if (engine_str == "mysql")
     {
       out.engine = Engine::MySQL;
     }
@@ -44,17 +71,24 @@ namespace vix::db
       out.engine = Engine::SQLite;
     }
 
-    out.mysql.host = cfg.getString("db.host", "tcp://127.0.0.1:3306");
-    out.mysql.user = cfg.getString("db.user", "root");
-    out.mysql.password = cfg.getString("db.password", "");
-    out.mysql.database = cfg.getString("db.database", "");
+    const std::string mysql_host =
+        cfg.getString("database.default.host", "127.0.0.1");
+    const int mysql_port =
+        cfg.getInt("database.default.port", 3306);
 
-    out.mysql.pool.min =
-        static_cast<std::size_t>(cfg.getInt("db.pool.min", 1));
-    out.mysql.pool.max =
-        static_cast<std::size_t>(cfg.getInt("db.pool.max", 8));
+    out.mysql.host = build_mysql_host_string(mysql_host, mysql_port);
+    out.mysql.user = cfg.getString("database.default.user", "root");
+    out.mysql.password = cfg.getDbPasswordFromEnv();
+    out.mysql.database = cfg.getString("database.default.name", "");
 
-    out.sqlite.path = cfg.getString("db.sqlite", "vix.db");
+    out.mysql.pool.min = static_cast<std::size_t>(
+        std::max(1, cfg.getInt("database.pool.min", 1)));
+
+    out.mysql.pool.max = static_cast<std::size_t>(
+        std::max(static_cast<int>(out.mysql.pool.min),
+                 cfg.getInt("database.pool.max", 8)));
+
+    out.sqlite.path = cfg.getString("database.sqlite.path", "vix.db");
     out.sqlite.pool.min = out.mysql.pool.min;
     out.sqlite.pool.max = out.mysql.pool.max;
 
