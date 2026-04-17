@@ -35,6 +35,12 @@ namespace vix::db
 {
   namespace
   {
+    /**
+     * @brief Convert a string to lowercase using ASCII rules.
+     *
+     * @param value Input string.
+     * @return Lowercased string.
+     */
     [[nodiscard]] std::string to_lower_ascii(std::string value)
     {
       std::transform(
@@ -47,6 +53,13 @@ namespace vix::db
       return value;
     }
 
+    /**
+     * @brief Build a MySQL TCP host string.
+     *
+     * @param host Host name or IP address.
+     * @param port TCP port.
+     * @return MySQL Connector/C++ host string.
+     */
     [[nodiscard]] std::string build_mysql_host_string(
         const std::string &host,
         int port)
@@ -97,6 +110,14 @@ namespace vix::db
 
   namespace
   {
+    /**
+     * @brief Create a connection factory for the selected engine.
+     *
+     * @param cfg Database configuration.
+     * @return Connection factory.
+     *
+     * @throws std::runtime_error if the requested backend is not enabled.
+     */
     ConnectionFactory makeFactoryFor(const DbConfig &cfg)
     {
       switch (cfg.engine)
@@ -130,6 +151,12 @@ namespace vix::db
       }
     }
 
+    /**
+     * @brief Resolve the pool configuration for the selected engine.
+     *
+     * @param cfg Database configuration.
+     * @return Pool configuration for the active backend.
+     */
     PoolConfig poolConfigFor(const DbConfig &cfg)
     {
       switch (cfg.engine)
@@ -143,6 +170,12 @@ namespace vix::db
       }
     }
 
+    /**
+     * @brief Create and warm up a connection pool.
+     *
+     * @param cfg Database configuration.
+     * @return Shared pointer to the initialized connection pool.
+     */
     std::shared_ptr<ConnectionPool> makePoolFor(const DbConfig &cfg)
     {
       auto pool = std::make_shared<ConnectionPool>(
@@ -157,6 +190,14 @@ namespace vix::db
   Database::Database(const DbConfig &cfg)
       : cfg_(cfg), pool_(makePoolFor(cfg))
   {
+  }
+
+  Database Database::from_env(std::string envPath)
+  {
+    auto &cfg = vix::config::Config::getInstance(
+        std::filesystem::path(envPath));
+
+    return Database(make_db_config_from_vix_config(cfg));
   }
 
   Database Database::mysql(std::string host,

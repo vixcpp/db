@@ -15,10 +15,15 @@
 #ifndef VIX_DB_DATABASE_HPP
 #define VIX_DB_DATABASE_HPP
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 
-#include <vix/db/pool/ConnectionPool.hpp>
+#include <vix/db/Transaction.hpp>
+#include <vix/db/result/OwnedResultSet.hpp>
 
 namespace vix::config
 {
@@ -62,28 +67,37 @@ namespace vix::db
    */
   struct DbConfig
   {
-    Engine engine{Engine::SQLite}; // 👈 IMPORTANT: SQLite par défaut
+    /// Selected database engine
+    Engine engine{Engine::SQLite};
 
+    /// MySQL-specific configuration
     MySQLConfig mysql{};
+
+    /// SQLite-specific configuration
     SQLiteConfig sqlite{};
   };
 
   /**
    * @brief Build a DbConfig from a Vix configuration object.
+   *
+   * @param cfg Vix configuration source.
+   * @return Database configuration derived from the Vix config.
    */
   DbConfig make_db_config_from_vix_config(const vix::config::Config &cfg);
 
   /**
    * @brief High-level database facade.
    *
-   * This is the main entry point for database usage in Vix.
+   * Database is the main entry point for database usage in Vix.
    *
    * Responsibilities:
    * - Select the correct driver (MySQL / SQLite)
    * - Build the connection factory
    * - Initialize and manage the connection pool
+   * - Expose a simpler public API for common queries
    *
-   * The goal is to hide all driver-level complexity from the user.
+   * The goal is to keep driver and pooling complexity inside Vix
+   * while providing a minimal API to applications.
    */
   class Database
   {
@@ -96,7 +110,25 @@ namespace vix::db
     explicit Database(const DbConfig &cfg);
 
     /**
-     * @brief Create a MySQL database instance (ultra simple API).
+     * @brief Create a database instance from a Vix environment file.
+     *
+     * This helper loads the Vix configuration from the given env path,
+     * builds a DbConfig, then initializes the database facade.
+     *
+     * @param envPath Path to the environment file.
+     * @return Configured database instance.
+     */
+    static Database from_env(std::string envPath = ".env");
+
+    /**
+     * @brief Create a MySQL database instance.
+     *
+     * @param host MySQL host string.
+     * @param user Database username.
+     * @param password Database password.
+     * @param database Database name.
+     * @param pool Pool configuration.
+     * @return Configured database instance.
      */
     static Database mysql(std::string host,
                           std::string user,
@@ -105,38 +137,160 @@ namespace vix::db
                           PoolConfig pool = {});
 
     /**
-     * @brief Create a SQLite database instance (ultra simple API).
+     * @brief Create a SQLite database instance.
+     *
+     * @param path SQLite database file path.
+     * @param pool Pool configuration.
+     * @return Configured database instance.
      */
     static Database sqlite(std::string path,
                            PoolConfig pool = {});
 
     /**
+     * @brief Execute a SQL statement without returning rows.
+     *
+     * This helper internally acquires a pooled connection,
+     * prepares the statement, binds all positional arguments,
+     * then executes it.
+     *
+     * Typical use cases:
+     * - CREATE TABLE
+     * - INSERT
+     * - UPDATE
+     * - DELETE
+     *
+     * @tparam Args Bound argument types.
+     * @param sql SQL statement.
+     * @param args Positional bind values.
+     * @return Number of affected rows, when supported by the driver.
+     */
+    template <typename... Args>
+    std::uint64_t exec(std::string_view sql, Args &&...args)
+    {
+      PooledConn conn(pool());
+
+      auto stmt = conn->prepare(sql);
+
+      std::size_t i = 1;
+      (stmt->bind(i++, std::forward<Args>(args)), ...);
+
+      return stmt->exec();
+    }
+
+    /**
+     * @brief Execute a SQL query and return a safe result set.
+     *
+     * This helper acquires a pooled connection, prepares the statement,
+     * binds all positional arguments, executes the query, then returns
+     * a result wrapper that keeps the connection alive until the result
+     * set is destroyed by the caller.
+     *
+     * @tparam Args Bound argument types.
+     * @param sql SQL query.
+     * @param args Positional bind values.
+     * @return Owning pointer to a safe result set.
+     */
+    template <typename... Args>
+    std::unique_ptr<ResultSet> query(std::string_view sql, Args &&...args)
+    {
+      PooledConn conn(pool());
+
+      auto stmt = conn->prepare(sql);
+
+      std::size_t i = 1;
+      (stmt->bind(i++, std::forward<Args>(args)), ...);
+
+      auto result = stmt->query();
+
+      return std::make_unique<OwnedResultSet>(
+          std::move(conn),
+          std::move(result));
+    }
+
+    /**
+     * @brief Execute a callback inside a transaction.
+     *
+     * A Transaction is started before invoking the callback.
+     * If the callback completes successfully, the transaction
+     * is committed. If it throws, the transaction is rolled back
+     * and the exception is rethrown.
+     *
+     * The callback receives a reference to the underlying Connection.
+     *
+     * @tparam Fn Callback type.
+     * @param fn Callback executed inside the transaction.
+     * @return The value returned by the callback, if any.
+     */
+    template <typename Fn>
+    auto transaction(Fn &&fn) -> decltype(fn(std::declval<Connection &>()))
+    {
+      Transaction tx(pool());
+
+      try
+      {
+        using ReturnType = decltype(fn(std::declval<Connection &>()));
+
+        if constexpr (std::is_void_v<ReturnType>)
+        {
+          fn(tx.conn());
+          tx.commit();
+          return;
+        }
+        else
+        {
+          auto result = fn(tx.conn());
+          tx.commit();
+          return result;
+        }
+      }
+      catch (...)
+      {
+        tx.rollback();
+        throw;
+      }
+    }
+
+    /**
      * @brief Return the selected database engine.
+     *
+     * @return Active engine.
      */
     Engine engine() const noexcept { return cfg_.engine; }
 
     /**
      * @brief Access database configuration.
+     *
+     * @return Database configuration.
      */
     const DbConfig &config() const noexcept { return cfg_; }
 
     /**
      * @brief Access the connection pool.
+     *
+     * This is mainly intended for advanced usage.
+     *
+     * @return Mutable reference to the connection pool.
      */
     ConnectionPool &pool() noexcept { return *pool_; }
 
     /**
-     * @brief Access the connection pool (const).
+     * @brief Access the connection pool.
+     *
+     * This is mainly intended for advanced usage.
+     *
+     * @return Const reference to the connection pool.
      */
     const ConnectionPool &pool() const noexcept { return *pool_; }
 
   private:
+    /// Database configuration stored by the facade
     DbConfig cfg_;
 
     /**
-     * IMPORTANT:
-     * On utilise un shared_ptr car ConnectionPool contient mutex + cv
-     * donc non copiable.
+     * @brief Shared connection pool instance.
+     *
+     * A shared_ptr is used because ConnectionPool contains
+     * synchronization primitives and is not copyable.
      */
     std::shared_ptr<ConnectionPool> pool_;
   };
