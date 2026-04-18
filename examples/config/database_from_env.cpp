@@ -6,7 +6,7 @@ int main()
 {
   try
   {
-    auto &cfg = vix::config::Config::getInstance(".env");
+    vix::config::Config cfg{".env"};
 
     std::cout << "database.engine = "
               << cfg.getString("database.engine", "sqlite") << "\n";
@@ -23,7 +23,7 @@ int main()
     std::cout << "database.default.name = "
               << cfg.getString("database.default.name", "") << "\n";
 
-    auto db = vix::db::Database::from_env(".env");
+    vix::db::Database db{cfg};
 
     db.exec(
         "CREATE TABLE IF NOT EXISTS users ("

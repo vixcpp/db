@@ -78,14 +78,6 @@ namespace vix::db
   };
 
   /**
-   * @brief Build a DbConfig from a Vix configuration object.
-   *
-   * @param cfg Vix configuration source.
-   * @return Database configuration derived from the Vix config.
-   */
-  DbConfig make_db_config_from_vix_config(const vix::config::Config &cfg);
-
-  /**
    * @brief High-level database facade.
    *
    * Database is the main entry point for database usage in Vix.
@@ -108,17 +100,7 @@ namespace vix::db
      * @param cfg Database configuration.
      */
     explicit Database(const DbConfig &cfg);
-
-    /**
-     * @brief Create a database instance from a Vix environment file.
-     *
-     * This helper loads the Vix configuration from the given env path,
-     * builds a DbConfig, then initializes the database facade.
-     *
-     * @param envPath Path to the environment file.
-     * @return Configured database instance.
-     */
-    static Database from_env(std::string envPath = ".env");
+    explicit Database(const vix::config::Config &cfg);
 
     /**
      * @brief Create a MySQL database instance.

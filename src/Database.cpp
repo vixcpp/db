@@ -68,46 +68,6 @@ namespace vix::db
     }
   } // namespace
 
-  DbConfig make_db_config_from_vix_config(const vix::config::Config &cfg)
-  {
-    DbConfig out;
-
-    const std::string engine_str =
-        to_lower_ascii(cfg.getString("database.engine", "sqlite"));
-
-    if (engine_str == "mysql")
-    {
-      out.engine = Engine::MySQL;
-    }
-    else
-    {
-      out.engine = Engine::SQLite;
-    }
-
-    const std::string mysql_host =
-        cfg.getString("database.default.host", "127.0.0.1");
-    const int mysql_port =
-        cfg.getInt("database.default.port", 3306);
-
-    out.mysql.host = build_mysql_host_string(mysql_host, mysql_port);
-    out.mysql.user = cfg.getString("database.default.user", "root");
-    out.mysql.password = cfg.getDbPasswordFromEnv();
-    out.mysql.database = cfg.getString("database.default.name", "");
-
-    out.mysql.pool.min = static_cast<std::size_t>(
-        std::max(1, cfg.getInt("database.pool.min", 1)));
-
-    out.mysql.pool.max = static_cast<std::size_t>(
-        std::max(static_cast<int>(out.mysql.pool.min),
-                 cfg.getInt("database.pool.max", 8)));
-
-    out.sqlite.path = cfg.getString("database.sqlite.path", "vix.db");
-    out.sqlite.pool.min = out.mysql.pool.min;
-    out.sqlite.pool.max = out.mysql.pool.max;
-
-    return out;
-  }
-
   namespace
   {
     /**
@@ -192,19 +152,60 @@ namespace vix::db
   {
   }
 
-  Database Database::from_env(std::string envPath)
-  {
-    auto &cfg = vix::config::Config::getInstance(
-        std::filesystem::path(envPath));
+  Database::Database(const vix::config::Config &cfg)
+      : Database([&cfg]()
+                 {
+                 DbConfig out;
 
-    return Database(make_db_config_from_vix_config(cfg));
+                 const std::string engine_str =
+                     to_lower_ascii(cfg.getString("database.engine", "sqlite"));
+
+                 if (engine_str == "mysql")
+                 {
+                   out.engine = Engine::MySQL;
+                 }
+                 else if (engine_str == "sqlite")
+                 {
+                   out.engine = Engine::SQLite;
+                 }
+                 else
+                 {
+                   throw std::runtime_error(
+                       "Invalid database.engine: '" + engine_str +
+                       "'. Supported values: mysql, sqlite");
+                 }
+
+                 const std::string mysql_host =
+                     cfg.getString("database.default.host", "127.0.0.1");
+                 const int mysql_port =
+                     cfg.getInt("database.default.port", 3306);
+
+                 out.mysql.host = build_mysql_host_string(mysql_host, mysql_port);
+                 out.mysql.user = cfg.getString("database.default.user", "root");
+                 out.mysql.password = cfg.getDbPasswordFromEnv();
+                 out.mysql.database = cfg.getString("database.default.name", "");
+
+                 out.mysql.pool.min = static_cast<std::size_t>(
+                     std::max(1, cfg.getInt("database.pool.min", 1)));
+
+                 out.mysql.pool.max = static_cast<std::size_t>(
+                     std::max(static_cast<int>(out.mysql.pool.min),
+                              cfg.getInt("database.pool.max", 8)));
+
+                 out.sqlite.path = cfg.getString("database.sqlite.path", "vix.db");
+                 out.sqlite.pool.min = out.mysql.pool.min;
+                 out.sqlite.pool.max = out.mysql.pool.max;
+
+                 return out; }())
+  {
   }
 
-  Database Database::mysql(std::string host,
-                           std::string user,
-                           std::string password,
-                           std::string database,
-                           PoolConfig pool)
+  Database Database::mysql(
+      std::string host,
+      std::string user,
+      std::string password,
+      std::string database,
+      PoolConfig pool)
   {
     DbConfig cfg;
     cfg.engine = Engine::MySQL;
@@ -216,8 +217,9 @@ namespace vix::db
     return Database(cfg);
   }
 
-  Database Database::sqlite(std::string path,
-                            PoolConfig pool)
+  Database Database::sqlite(
+      std::string path,
+      PoolConfig pool)
   {
     DbConfig cfg;
     cfg.engine = Engine::SQLite;

@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -41,12 +42,13 @@ namespace vix::db
    * and value transport across database drivers.
    *
    * Supported types:
-   * - nullptr        : SQL NULL
-   * - bool           : Boolean values
-   * - std::int64_t   : Integer values
-   * - double         : Floating-point values
-   * - std::string    : Text values (UTF-8)
-   * - Blob           : Binary values
+   * - nullptr         : SQL NULL
+   * - bool            : Boolean values
+   * - std::int64_t    : Signed integer values
+   * - std::uint64_t   : Unsigned integer values
+   * - double          : Floating-point values
+   * - std::string     : Text values (UTF-8)
+   * - Blob            : Binary values
    *
    * This abstraction allows drivers to remain minimal while providing
    * a consistent interface across different database backends.
@@ -55,6 +57,7 @@ namespace vix::db
       std::nullptr_t,
       bool,
       std::int64_t,
+      std::uint64_t,
       double,
       std::string,
       Blob>;
@@ -64,15 +67,32 @@ namespace vix::db
    *
    * @return DbValue representing NULL.
    */
-  inline DbValue null() { return nullptr; }
+  inline DbValue null()
+  {
+    return nullptr;
+  }
 
   /**
-   * @brief Create a 64-bit integer database value.
+   * @brief Create a 64-bit signed integer database value.
    *
    * @param v Integer value.
    * @return DbValue wrapping the integer.
    */
-  inline DbValue i64(std::int64_t v) { return v; }
+  inline DbValue i64(std::int64_t v)
+  {
+    return v;
+  }
+
+  /**
+   * @brief Create a 64-bit unsigned integer database value.
+   *
+   * @param v Integer value.
+   * @return DbValue wrapping the integer.
+   */
+  inline DbValue u64(std::uint64_t v)
+  {
+    return v;
+  }
 
   /**
    * @brief Create a floating-point database value.
@@ -80,7 +100,10 @@ namespace vix::db
    * @param v Double value.
    * @return DbValue wrapping the double.
    */
-  inline DbValue f64(double v) { return v; }
+  inline DbValue f64(double v)
+  {
+    return v;
+  }
 
   /**
    * @brief Create a boolean database value.
@@ -88,7 +111,10 @@ namespace vix::db
    * @param v Boolean value.
    * @return DbValue wrapping the boolean.
    */
-  inline DbValue b(bool v) { return v; }
+  inline DbValue b(bool v)
+  {
+    return v;
+  }
 
   /**
    * @brief Create a string database value.
@@ -98,7 +124,10 @@ namespace vix::db
    * @param v String value.
    * @return DbValue wrapping the string.
    */
-  inline DbValue str(std::string v) { return DbValue{std::move(v)}; }
+  inline DbValue str(std::string v)
+  {
+    return DbValue{std::move(v)};
+  }
 
   /**
    * @brief Create a binary (BLOB) database value.
@@ -109,6 +138,17 @@ namespace vix::db
   inline DbValue blob(std::vector<std::uint8_t> bytes)
   {
     return DbValue{Blob{std::move(bytes)}};
+  }
+
+  /**
+   * @brief Create a binary (BLOB) database value.
+   *
+   * @param value Blob value.
+   * @return DbValue wrapping the binary data.
+   */
+  inline DbValue blob(Blob value)
+  {
+    return DbValue{std::move(value)};
   }
 
 } // namespace vix::db
