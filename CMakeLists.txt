@@ -296,6 +296,34 @@ if (VIX_DB_BUILD_TOOLS)
 endif()
 
 # ------------------------------------------------------------------------------
+# Core preload dependencies
+# ------------------------------------------------------------------------------
+# Core needs these targets to be available before it is configured.
+# Otherwise it may disable JSON/template/env and fail later while compiling
+# headers that still include those modules.
+
+if (NOT TARGET vix::json AND NOT TARGET vix_json)
+  if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/../json/CMakeLists.txt")
+    message(STATUS "[vix_db] Adding json before core: ../json")
+    add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../json" json_build)
+  endif()
+endif()
+
+if (NOT TARGET vix::template AND NOT TARGET template)
+  if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/../template/CMakeLists.txt")
+    message(STATUS "[vix_db] Adding template before core: ../template")
+    add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../template" template_build)
+  endif()
+endif()
+
+if (NOT TARGET vix::env AND NOT TARGET vix_env)
+  if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/../env/CMakeLists.txt")
+    message(STATUS "[vix_db] Adding env before core: ../env")
+    add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../env" env_build)
+  endif()
+endif()
+
+# ------------------------------------------------------------------------------
 # If building DB standalone (not from umbrella), bring core as subdir
 # ------------------------------------------------------------------------------
 if (NOT TARGET vix::core)
