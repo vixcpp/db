@@ -198,6 +198,16 @@ vix build --clean
 vix build --preset release
 ```
 
+## Migration SQL generation
+
+Generate file-based migrations from a schema snapshot with either MySQL or SQLite SQL:
+
+```bash
+vix_db_migrator makemigrations --new ./schema.new.json --snapshot ./schema.json --dir ./migrations --name create_users --dialect sqlite
+```
+
+SQLite migration generation emits native DDL for table, column, and index operations. Unsupported SQLite `ADD COLUMN` forms, such as adding primary-key, unique, autoincrement, or required columns without defaults, fail before writing migration files. Down migrations for dropped columns use SQLite 3.35+ `DROP COLUMN` syntax.
+
 ## Tests
 
 Build all targets first, then run tests:

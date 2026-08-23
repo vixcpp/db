@@ -14,6 +14,7 @@ on:
       - "include/**"
       - "src/**"
       - "examples/**"
+      - "tests/**"
       - "tools/**"
       - "README.md"
       - "LICENSE"
@@ -32,6 +33,7 @@ on:
       - "include/**"
       - "src/**"
       - "examples/**"
+      - "tests/**"
       - "tools/**"
       - "README.md"
       - "LICENSE"
@@ -189,6 +191,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DVIX_ENABLE_SANITIZERS=OFF \
+            -DVIX_DB_BUILD_TESTS=ON \
             -DVIX_DB_BUILD_EXAMPLES=${{ matrix.examples }} \
             -DVIX_DB_USE_MYSQL=${{ matrix.mysql }} \
             -DVIX_DB_REQUIRE_MYSQL=OFF \
@@ -204,6 +207,10 @@ jobs:
       - name: Build
         run: |
           cmake --build build -j"${BUILD_JOBS}"
+
+      - name: Test
+        run: |
+          ctest --test-dir build --output-on-failure
 
       - name: Print executables
         run: |

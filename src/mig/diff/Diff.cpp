@@ -24,25 +24,26 @@ namespace vix::db::mig::diff
     auto A = map_tables(from);
     auto B = map_tables(to);
 
-    // 1) Drop tables missing in 'to'
-    for (const auto &[name, ta] : A)
+    // 1) Drop tables missing in 'to', preserving source schema order.
+    for (const auto &table : from.tables)
     {
-      if (!B.count(name))
-        ops.push_back(DropTable{*ta});
+      if (!B.count(table.name))
+        ops.push_back(DropTable{table});
     }
 
-    // 2) Create tables new in 'to'
-    for (const auto &[name, tb] : B)
+    // 2) Create tables new in 'to', preserving target schema order.
+    for (const auto &targetTable : to.tables)
     {
+      const auto &name = targetTable.name;
       if (!A.count(name))
       {
-        ops.push_back(CreateTable{*tb});
+        ops.push_back(CreateTable{targetTable});
         continue;
       }
 
       // 3) Same table: diff columns + indexes
       const auto *oldT = A.at(name);
-      const auto *newT = tb;
+      const auto *newT = &targetTable;
 
       // Columns: drops
       for (const auto &c_old : oldT->columns)
@@ -52,7 +53,7 @@ namespace vix::db::mig::diff
       }
 
       // Columns: adds
-      for (const auto &c_new : newT->columns)
+      for (const auto &c_new : targetTable.columns)
       {
         if (!oldT->findColumn(c_new.name))
           ops.push_back(AddColumn{name, c_new});
@@ -66,7 +67,7 @@ namespace vix::db::mig::diff
       }
 
       // Indexes: adds
-      for (const auto &i_new : newT->indexes)
+      for (const auto &i_new : targetTable.indexes)
       {
         if (!oldT->findIndex(i_new.name))
           ops.push_back(CreateIndex{name, i_new});
