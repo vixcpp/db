@@ -224,6 +224,8 @@ set(VIX_DB_PUBLIC_HEADERS
   include/vix/db/mig/Migration.hpp
   include/vix/db/mig/MigrationsRunner.hpp
   include/vix/db/mig/FileMigrationsRunner.hpp
+  include/vix/db/mig/sql/MySqlGenerator.hpp
+  include/vix/db/mig/sql/SQLiteGenerator.hpp
 )
 
 set(VIX_DB_SOURCES
@@ -235,6 +237,7 @@ set(VIX_DB_SOURCES
   src/schema/Json.cpp
   src/mig/diff/Diff.cpp
   src/mig/sql/MySqlGenerator.cpp
+  src/mig/sql/SQLiteGenerator.cpp
 )
 
 # MySQL driver sources
@@ -424,6 +427,37 @@ endif()
 # ------------------------------------------------------------------------------
 if (VIX_DB_BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
+
+# ------------------------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------------------------
+if (VIX_DB_BUILD_TESTS)
+  enable_testing()
+
+  if (VIX_DB_HAS_SQLITE)
+    add_executable(vix_db_sql_generator_tests
+      tests/sql_generator_tests.cpp
+      tools/migrator/MakeMigrations.cpp
+    )
+
+    target_link_libraries(vix_db_sql_generator_tests PRIVATE vix::db)
+    target_compile_features(vix_db_sql_generator_tests PRIVATE cxx_std_20)
+
+    if (MSVC)
+      target_compile_options(vix_db_sql_generator_tests PRIVATE ${_WARNINGS_MSVC})
+    else()
+      target_compile_options(vix_db_sql_generator_tests PRIVATE ${_WARNINGS_GNU})
+    endif()
+
+    if (COMMAND vix_enable_sanitizers)
+      vix_enable_sanitizers(vix_db_sql_generator_tests)
+    endif()
+
+    add_test(NAME vix_db_sql_generator_tests COMMAND vix_db_sql_generator_tests)
+  else()
+    message(STATUS "[vix_db] tests requested but SQLite is disabled; SQL execution tests skipped.")
+  endif()
 endif()
 
 # ------------------------------------------------------------------------------

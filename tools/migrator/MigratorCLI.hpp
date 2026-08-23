@@ -38,7 +38,7 @@ namespace vix::db::tools
       std::string snapshotPath = "schema.json"; // schema snapshot (old -> updated)
       std::string newSchemaPath;                // required: schema.new.json
       std::string name = "auto";                // label in filename
-      std::string dialect = "mysql";            // mysql | sqlite (mysql only for now)
+      std::string dialect = "mysql";            // mysql | sqlite
     };
 
     static int run(int argc, char **argv);

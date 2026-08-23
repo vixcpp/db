@@ -1,0 +1,400 @@
+#include <vix/db/mig/diff/Diff.hpp>
+#include <vix/db/mig/sql/MySqlGenerator.hpp>
+#include <vix/db/mig/sql/SQLiteGenerator.hpp>
+#include <vix/db/schema/Json.hpp>
+#include <vix/db/schema/Schema.hpp>
+
+#include "../tools/migrator/MakeMigrations.hpp"
+
+#include <sqlite3.h>
+
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <variant>
+#include <vector>
+
+namespace
+{
+  using namespace vix::db::schema;
+  using namespace vix::db::mig::diff;
+
+  void require(bool condition, const std::string &message)
+  {
+    if (!condition)
+      throw std::runtime_error(message);
+  }
+
+  void expect_eq(const std::string &actual, const std::string &expected, const std::string &label)
+  {
+    if (actual != expected)
+    {
+      std::cerr << "FAILED: " << label << "\nExpected:\n"
+                << expected << "\nActual:\n"
+                << actual << "\n";
+      throw std::runtime_error(label);
+    }
+  }
+
+  Column column(std::string name,
+                Type type,
+                bool nullable = true,
+                bool primaryKey = false,
+                bool autoIncrement = false,
+                bool unique = false,
+                std::string def = {})
+  {
+    Column c;
+    c.name = std::move(name);
+    c.type = type;
+    c.nullable = nullable;
+    c.primary_key = primaryKey;
+    c.auto_increment = autoIncrement;
+    c.unique = unique;
+    if (!def.empty())
+      c.def = DefaultValue{std::move(def)};
+    return c;
+  }
+
+  Index index(std::string name, std::vector<std::string> columns, bool unique = false)
+  {
+    Index i;
+    i.name = std::move(name);
+    i.columns = std::move(columns);
+    i.unique = unique;
+    return i;
+  }
+
+  Table users_table()
+  {
+    Table t;
+    t.name = "user table";
+    t.columns = {
+        column("id", Type::BigInt(), false, true, true),
+        column("order", Type::Text(), false, false, false, false, "'new'"),
+        column("name\"with\"quote", Type::VarChar(64)),
+        column("active", Type::Bool(), false, false, false, false, "1"),
+        column("score", Type::Double()),
+        column("created_at", Type::DateTime()),
+    };
+    t.indexes = {
+        index("idx user order", {"order"}),
+        index("uniq user quoted", {"name\"with\"quote"}, true),
+    };
+    return t;
+  }
+
+  void exec(sqlite3 *db, const std::string &sql)
+  {
+    char *err = nullptr;
+    const int rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &err);
+    if (rc != SQLITE_OK)
+    {
+      std::string msg = err != nullptr ? err : sqlite3_errmsg(db);
+      sqlite3_free(err);
+      throw std::runtime_error("sqlite exec failed: " + msg + "\nSQL:\n" + sql);
+    }
+  }
+
+  bool table_exists(sqlite3 *db, const std::string &name)
+  {
+    sqlite3_stmt *stmt = nullptr;
+    const char *sql = "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+      throw std::runtime_error(sqlite3_errmsg(db));
+    sqlite3_bind_text(stmt, 1, name.c_str(), -1, nullptr);
+    const bool exists = sqlite3_step(stmt) == SQLITE_ROW;
+    sqlite3_finalize(stmt);
+    return exists;
+  }
+
+  bool index_exists(sqlite3 *db, const std::string &name)
+  {
+    sqlite3_stmt *stmt = nullptr;
+    const char *sql = "SELECT 1 FROM sqlite_master WHERE type='index' AND name=?";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+      throw std::runtime_error(sqlite3_errmsg(db));
+    sqlite3_bind_text(stmt, 1, name.c_str(), -1, nullptr);
+    const bool exists = sqlite3_step(stmt) == SQLITE_ROW;
+    sqlite3_finalize(stmt);
+    return exists;
+  }
+
+  bool column_exists(sqlite3 *db, const std::string &table, const std::string &name)
+  {
+    sqlite3_stmt *stmt = nullptr;
+    const std::string sql = "PRAGMA table_info(\"" + table + "\")";
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+      throw std::runtime_error(sqlite3_errmsg(db));
+    bool found = false;
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      const auto *text = sqlite3_column_text(stmt, 1);
+      if (text != nullptr && name == reinterpret_cast<const char *>(text))
+      {
+        found = true;
+        break;
+      }
+    }
+    sqlite3_finalize(stmt);
+    return found;
+  }
+
+  bool sqlite_supports_drop_column()
+  {
+    return sqlite3_libversion_number() >= 3035000;
+  }
+
+  void expect_throws_contains(void (*fn)(), const std::string &needle)
+  {
+    try
+    {
+      fn();
+    }
+    catch (const std::exception &e)
+    {
+      require(std::string(e.what()).find(needle) != std::string::npos,
+              "exception did not contain expected text: " + needle);
+      return;
+    }
+    throw std::runtime_error("expected exception containing: " + needle);
+  }
+
+  void test_sqlite_golden_create_table_and_types()
+  {
+    const std::vector<Op> ops{CreateTable{users_table()}};
+    const std::string expected =
+        "-- Generated by Vix ORM (SQLite)\n"
+        "CREATE TABLE IF NOT EXISTS \"user table\" (\n"
+        "  \"id\" INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+        "  \"order\" TEXT NOT NULL DEFAULT 'new',\n"
+        "  \"name\"\"with\"\"quote\" TEXT,\n"
+        "  \"active\" INTEGER NOT NULL DEFAULT 1,\n"
+        "  \"score\" REAL,\n"
+        "  \"created_at\" TEXT\n"
+        ");\n";
+    expect_eq(vix::db::mig::sql::to_sqlite_up(ops), expected, "SQLite CREATE TABLE golden");
+  }
+
+  void test_sqlite_exec_create_add_index_drop_round_trip()
+  {
+    sqlite3 *db = nullptr;
+    require(sqlite3_open(":memory:", &db) == SQLITE_OK, "open sqlite memory db");
+
+    Table t = users_table();
+    std::vector<Op> createOps{CreateTable{t}, CreateIndex{t.name, t.indexes[0]}, CreateIndex{t.name, t.indexes[1]}};
+    exec(db, vix::db::mig::sql::to_sqlite_up(createOps));
+    require(table_exists(db, "user table"), "created table should exist");
+    require(column_exists(db, "user table", "name\"with\"quote"), "quoted column should exist");
+    require(index_exists(db, "idx user order"), "normal index should exist");
+    require(index_exists(db, "uniq user quoted"), "unique index should exist");
+
+    exec(db, "INSERT INTO \"user table\" (\"order\", \"name\"\"with\"\"quote\", \"active\") VALUES ('a', 'same', 1);");
+    char *err = nullptr;
+    const int duplicate = sqlite3_exec(
+        db,
+        "INSERT INTO \"user table\" (\"order\", \"name\"\"with\"\"quote\", \"active\") VALUES ('b', 'same', 1);",
+        nullptr,
+        nullptr,
+        &err);
+    if (err != nullptr)
+      sqlite3_free(err);
+    require(duplicate != SQLITE_OK, "unique index should reject duplicate values");
+
+    const Column added = column("added", Type::Int(), false, false, false, false, "0");
+    exec(db, vix::db::mig::sql::to_sqlite_up({AddColumn{t.name, added}}));
+    require(column_exists(db, "user table", "added"), "added column should exist");
+
+    if (sqlite_supports_drop_column())
+    {
+      exec(db, vix::db::mig::sql::to_sqlite_down({AddColumn{t.name, added}}));
+      require(!column_exists(db, "user table", "added"), "down migration should drop added column");
+    }
+
+    exec(db, vix::db::mig::sql::to_sqlite_down(createOps));
+    require(!table_exists(db, "user table"), "down migration should drop created table");
+    sqlite3_close(db);
+  }
+
+  void test_sqlite_drop_table_drop_index_and_drop_column()
+  {
+    sqlite3 *db = nullptr;
+    require(sqlite3_open(":memory:", &db) == SQLITE_OK, "open sqlite memory db");
+    exec(db, "CREATE TABLE \"items\" (\"id\" INTEGER PRIMARY KEY, \"gone\" TEXT, \"kept\" TEXT);");
+    exec(db, "CREATE INDEX \"idx_items_kept\" ON \"items\" (\"kept\");");
+
+    exec(db, vix::db::mig::sql::to_sqlite_up({DropIndex{"items", index("idx_items_kept", {"kept"})}}));
+    require(!index_exists(db, "idx_items_kept"), "DROP INDEX should remove index");
+
+    if (sqlite_supports_drop_column())
+    {
+      exec(db, vix::db::mig::sql::to_sqlite_up({DropColumn{"items", column("gone", Type::Text())}}));
+      require(!column_exists(db, "items", "gone"), "DROP COLUMN should remove column");
+    }
+
+    Table t;
+    t.name = "items";
+    exec(db, vix::db::mig::sql::to_sqlite_up({DropTable{t}}));
+    require(!table_exists(db, "items"), "DROP TABLE should remove table");
+    sqlite3_close(db);
+  }
+
+  void test_sqlite_unsupported_add_column_diagnostics()
+  {
+    expect_throws_contains(
+        []()
+        {
+          (void)vix::db::mig::sql::to_sqlite_up({AddColumn{"t", column("id", Type::Int(), false, true)}});
+        },
+        "PRIMARY KEY");
+    expect_throws_contains(
+        []()
+        {
+          (void)vix::db::mig::sql::to_sqlite_up({AddColumn{"t", column("email", Type::Text(), true, false, false, true)}});
+        },
+        "UNIQUE");
+    expect_throws_contains(
+        []()
+        {
+          (void)vix::db::mig::sql::to_sqlite_up({AddColumn{"t", column("required", Type::Text(), false)}});
+        },
+        "NOT NULL");
+  }
+
+  void test_deterministic_diff_ordering()
+  {
+    Schema from;
+    Table z;
+    z.name = "z_old";
+    z.columns = {column("id", Type::Int(), false, true)};
+    Table existing;
+    existing.name = "existing";
+    existing.columns = {column("id", Type::Int(), false, true), column("old_col", Type::Text())};
+    existing.indexes = {index("idx_old", {"old_col"})};
+    from.tables = {z, existing};
+
+    Schema to;
+    Table changed;
+    changed.name = "existing";
+    changed.columns = {column("id", Type::Int(), false, true), column("new_col", Type::Text())};
+    changed.indexes = {index("idx_new", {"new_col"})};
+    Table a;
+    a.name = "a_new";
+    a.columns = {column("id", Type::Int(), false, true)};
+    to.tables = {changed, a};
+
+    const auto ops = vix::db::mig::diff::diff_or_throw(from, to);
+    require(ops.size() == 6, "expected six diff operations");
+    require(std::holds_alternative<DropTable>(ops[0]), "drop missing table first in source order");
+    require(std::holds_alternative<DropColumn>(ops[1]), "drop old column before adding new column");
+    require(std::holds_alternative<AddColumn>(ops[2]), "add new column after drops");
+    require(std::holds_alternative<DropIndex>(ops[3]), "drop old index before creating new index");
+    require(std::holds_alternative<CreateIndex>(ops[4]), "create new index after dropping old index");
+    require(std::holds_alternative<CreateTable>(ops[5]), "create new table in target order");
+  }
+
+  void test_make_migrations_routes_sqlite()
+  {
+    namespace fs = std::filesystem;
+    const auto root = fs::temp_directory_path() / fs::path("vix-db-sqlite-generator-test");
+    fs::remove_all(root);
+    fs::create_directories(root);
+
+    Schema s;
+    s.tables = {users_table()};
+    const auto schemaPath = root / "schema.new.json";
+    {
+      std::ofstream out(schemaPath);
+      out << vix::db::schema::to_json_string(s, true);
+    }
+
+    vix::db::tools::MigratorCLI::Options opt;
+    opt.command = "makemigrations";
+    opt.newSchemaPath = schemaPath.string();
+    opt.snapshotPath = (root / "schema.json").string();
+    opt.migrationsDir = (root / "migrations").string();
+    opt.name = "create users";
+    opt.dialect = "sqlite";
+
+    require(vix::db::tools::run_make_migrations(opt) == 0, "makemigrations sqlite should succeed");
+
+    bool sawUp = false;
+    bool sawDown = false;
+    for (const auto &entry : fs::directory_iterator(root / "migrations"))
+    {
+      const auto path = entry.path();
+      const auto filename = path.filename().string();
+      std::ifstream in(path);
+      const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+      if (filename.find(".up.sql") != std::string::npos)
+      {
+        sawUp = true;
+        require(text.find("-- Generated by Vix ORM (SQLite)") != std::string::npos, "up migration should be SQLite");
+        require(text.find("\"user table\"") != std::string::npos, "up migration should quote identifiers");
+      }
+      if (filename.find(".down.sql") != std::string::npos)
+      {
+        sawDown = true;
+        require(text.find("-- Generated by Vix ORM (SQLite) [DOWN]") != std::string::npos, "down migration should be SQLite");
+      }
+    }
+
+    require(sawUp && sawDown, "makemigrations should write up and down SQL files");
+    fs::remove_all(root);
+  }
+
+  void test_mysql_generator_regression_golden()
+  {
+    Table t;
+    t.name = "users";
+    t.columns = {
+        column("id", Type::BigInt(), false, true, true),
+        column("email", Type::VarChar(255), false, false, false, true),
+    };
+    t.indexes = {index("idx_users_email", {"email"})};
+    const std::vector<Op> ops{CreateTable{t}, CreateIndex{t.name, t.indexes[0]}};
+
+    const std::string expected =
+        "-- Generated by Vix ORM (MySQL)\n"
+        "CREATE TABLE IF NOT EXISTS `users` (\n"
+        "  `id` BIGINT NOT NULL AUTO_INCREMENT,\n"
+        "  `email` VARCHAR(255) NOT NULL UNIQUE\n"
+        ",  PRIMARY KEY (`id`)\n"
+        ") ENGINE=InnoDB;\n"
+        "CREATE INDEX `idx_users_email` ON `users` (`email`);\n";
+    expect_eq(vix::db::mig::sql::to_mysql_up(ops), expected, "MySQL generator regression");
+  }
+
+  void test_empty_sqlite_migration_set()
+  {
+    expect_eq(vix::db::mig::sql::to_sqlite_up({}), "-- Generated by Vix ORM (SQLite)\n", "empty sqlite up");
+    expect_eq(vix::db::mig::sql::to_sqlite_down({}), "-- Generated by Vix ORM (SQLite) [DOWN]\n", "empty sqlite down");
+  }
+}
+
+int main()
+{
+  try
+  {
+    test_sqlite_golden_create_table_and_types();
+    test_sqlite_exec_create_add_index_drop_round_trip();
+    test_sqlite_drop_table_drop_index_and_drop_column();
+    test_sqlite_unsupported_add_column_diagnostics();
+    test_deterministic_diff_ordering();
+    test_make_migrations_routes_sqlite();
+    test_mysql_generator_regression_golden();
+    test_empty_sqlite_migration_set();
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << e.what() << "\n";
+    return 1;
+  }
+
+  std::cout << "vix_db_sql_generator_tests passed\n";
+  return 0;
+}
