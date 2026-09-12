@@ -110,10 +110,16 @@ set_property(TARGET MySQLCppConn::MySQLCppConn PROPERTY
 get_filename_component(_ext "${MYSQLCPPCONN_LIB}" EXT)
 if (_ext STREQUAL ".a")
   find_package(OpenSSL REQUIRED)
-  find_package(ZLIB REQUIRED)
-  set_property(TARGET MySQLCppConn::MySQLCppConn APPEND PROPERTY
-    INTERFACE_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB
-  )
+  if (VIX_ZLIB_BUNDLED AND TARGET vix::zlib)
+    set_property(TARGET MySQLCppConn::MySQLCppConn APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto vix::zlib
+    )
+  else()
+    find_package(ZLIB REQUIRED)
+    set_property(TARGET MySQLCppConn::MySQLCppConn APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB
+    )
+  endif()
 endif()
 
 message(STATUS "[db] MySQLCppConn alias configured:")
