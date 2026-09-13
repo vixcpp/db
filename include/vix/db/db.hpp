@@ -13,8 +13,8 @@
  *  Vix.cpp
  */
 
-#ifndef VIX_DB_HPP
-#define VIX_DB_HPP
+#ifndef VIX_DB_DB_HPP
+#define VIX_DB_DB_HPP
 
 #include <vix/db/core/Errors.hpp>
 #include <vix/db/core/Value.hpp>
