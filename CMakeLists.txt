@@ -31,10 +31,6 @@ option(VIX_DB_REQUIRE_MYSQL     "Fail if MySQL requested but not found"      OFF
 option(VIX_DB_USE_SQLITE        "Enable SQLite3 driver"                      OFF)
 option(VIX_DB_REQUIRE_SQLITE    "Fail if SQLite requested but not found"     OFF)
 
-# Future (not enabled by default)
-option(VIX_DB_USE_POSTGRES      "Enable PostgreSQL driver (future)"          OFF)
-option(VIX_DB_REQUIRE_POSTGRES  "Fail if Postgres requested but not found"   OFF)
-
 # Redis is not SQL, but useful for caching / sessions / queue (future)
 option(VIX_DB_USE_REDIS         "Enable Redis client (future)"               OFF)
 option(VIX_DB_REQUIRE_REDIS     "Fail if Redis requested but not found"      OFF)
@@ -68,7 +64,6 @@ endif()
 # ------------------------------------------------------------------------------
 set(VIX_DB_HAS_MYSQL    OFF)
 set(VIX_DB_HAS_SQLITE   OFF)
-set(VIX_DB_HAS_POSTGRES OFF)
 set(VIX_DB_HAS_REDIS    OFF)
 
 # ------------------------------------------------------------------------------
@@ -129,52 +124,6 @@ if (VIX_DB_USE_SQLITE)
       message(STATUS "[vix_db] sqlite: disabled (not found)")
       set(VIX_DB_USE_SQLITE OFF)
     endif()
-  endif()
-endif()
-
-# ------------------------------------------------------------------------------
-# PostgreSQL detection (future placeholder)
-# ------------------------------------------------------------------------------
-set(_VIX_PQ_TARGET "")
-if (VIX_DB_USE_POSTGRES)
-  # Try CMake module first (may define PostgreSQL::PostgreSQL in some setups)
-  find_package(PostgreSQL QUIET)
-
-  # Generic fallback to libpq
-  if (PostgreSQL_FOUND)
-    # PostgreSQL CMake module typically exports variables, not a target. Create an alias target.
-    if (NOT TARGET PostgreSQL::libpq)
-      add_library(PostgreSQL::libpq INTERFACE IMPORTED)
-      set_target_properties(PostgreSQL::libpq PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${PostgreSQL_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES      "${PostgreSQL_LIBRARIES}"
-      )
-    endif()
-    set(_VIX_PQ_TARGET PostgreSQL::libpq)
-  else()
-    # fallback manual find (libpq)
-    find_library(_VIX_PQ_LIB NAMES pq libpq)
-    find_path(_VIX_PQ_INC NAMES libpq-fe.h)
-
-    if (_VIX_PQ_LIB AND _VIX_PQ_INC)
-      add_library(PostgreSQL::libpq INTERFACE IMPORTED)
-      set_target_properties(PostgreSQL::libpq PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${_VIX_PQ_INC}"
-        INTERFACE_LINK_LIBRARIES      "${_VIX_PQ_LIB}"
-      )
-      set(_VIX_PQ_TARGET PostgreSQL::libpq)
-    endif()
-  endif()
-
-  if (_VIX_PQ_TARGET)
-    set(VIX_DB_HAS_POSTGRES ON)
-    message(STATUS "[vix_db] postgres: enabled (placeholder target=${_VIX_PQ_TARGET})")
-  else()
-    if (VIX_DB_REQUIRE_POSTGRES)
-      message(FATAL_ERROR "[vix_db] postgres requested but libpq not found (VIX_DB_REQUIRE_POSTGRES=ON).")
-    endif()
-    message(STATUS "[vix_db] postgres: disabled (not found)")
-    set(VIX_DB_USE_POSTGRES OFF)
   endif()
 endif()
 
@@ -263,19 +212,6 @@ if (VIX_DB_HAS_SQLITE)
   list(APPEND VIX_DB_SOURCES        src/sqlite/SQLiteDriver.cpp)
 endif()
 
-# Postgres driver sources (future placeholders)
-if (VIX_DB_HAS_POSTGRES)
-  if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/vix/db/postgres/PostgresDriver.hpp"
-      AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/postgres/PostgresDriver.cpp")
-    list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/postgres/PostgresDriver.hpp)
-    list(APPEND VIX_DB_SOURCES        src/postgres/PostgresDriver.cpp)
-  else()
-    message(WARNING "[vix_db] postgres enabled but driver sources not found; disabling.")
-    set(VIX_DB_HAS_POSTGRES OFF)
-    set(VIX_DB_USE_POSTGRES OFF)
-  endif()
-endif()
-
 # Redis client sources (future placeholders)
 if (VIX_DB_HAS_REDIS)
   list(APPEND VIX_DB_PUBLIC_HEADERS include/vix/db/redis/RedisClient.hpp)
@@ -358,7 +294,6 @@ endif()
 target_compile_definitions(vix_db PUBLIC
   VIX_DB_HAS_MYSQL=$<BOOL:${VIX_DB_HAS_MYSQL}>
   VIX_DB_HAS_SQLITE=$<BOOL:${VIX_DB_HAS_SQLITE}>
-  VIX_DB_HAS_POSTGRES=$<BOOL:${VIX_DB_HAS_POSTGRES}>
   VIX_DB_HAS_REDIS=$<BOOL:${VIX_DB_HAS_REDIS}>
 )
 
@@ -414,14 +349,6 @@ if (VIX_DB_HAS_SQLITE)
     target_link_libraries(vix_db PUBLIC ${_VIX_SQLITE_TARGET})
   else()
     message(WARNING "[vix_db] sqlite enabled but no target found; linkage skipped.")
-  endif()
-endif()
-
-if (VIX_DB_HAS_POSTGRES)
-  if (_VIX_PQ_TARGET)
-    target_link_libraries(vix_db PUBLIC ${_VIX_PQ_TARGET})
-  else()
-    message(WARNING "[vix_db] postgres enabled but no libpq target found; linkage skipped.")
   endif()
 endif()
 
@@ -500,6 +427,5 @@ message(STATUS "------------------------------------------------------")
 message(STATUS "[vix_db] configured (${PROJECT_VERSION})")
 message(STATUS "[vix_db] mysql:    requested=${VIX_DB_USE_MYSQL} available=${VIX_DB_HAS_MYSQL}")
 message(STATUS "[vix_db] sqlite:   requested=${VIX_DB_USE_SQLITE} available=${VIX_DB_HAS_SQLITE}")
-message(STATUS "[vix_db] postgres: requested=${VIX_DB_USE_POSTGRES} available=${VIX_DB_HAS_POSTGRES}")
 message(STATUS "[vix_db] redis:    requested=${VIX_DB_USE_REDIS} available=${VIX_DB_HAS_REDIS}")
 message(STATUS "------------------------------------------------------")

@@ -30,7 +30,7 @@ namespace vix::db
    * @brief Abstract prepared statement interface.
    *
    * A Statement represents a prepared SQL statement with positional parameters.
-   * Concrete database drivers (MySQL, SQLite, PostgreSQL, etc.) must implement
+   * Concrete database drivers (such as MySQL and SQLite) must implement
    * this interface.
    *
    * The API is intentionally minimal and type-erased through DbValue to keep
