@@ -2,6 +2,7 @@
 
 #include <vix/db/mig/diff/Diff.hpp>
 #include <vix/db/mig/sql/MySqlGenerator.hpp>
+#include <vix/db/mig/sql/SQLiteGenerator.hpp>
 #include <vix/db/schema/Json.hpp>
 
 #include <filesystem>
@@ -87,17 +88,33 @@ namespace vix::db::tools
 
     auto ops = vix::db::mig::diff::diff_or_throw(oldS, newS);
 
-    // Always write snapshot (so formatting/version stays stable)
-    write_text(snapshot_path, vix::db::schema::to_json_string(newS, true));
-
     if (ops.empty())
+    {
+      // Always write snapshot (so formatting/version stays stable)
+      write_text(snapshot_path, vix::db::schema::to_json_string(newS, true));
       return 0;
+    }
 
-    if (opt.dialect != "mysql")
-      throw std::runtime_error("Only --dialect mysql is implemented for now");
+    std::string up_sql;
+    std::string down_sql;
+    if (opt.dialect == "mysql")
+    {
+      up_sql = vix::db::mig::sql::to_mysql_up(ops);
+      down_sql = vix::db::mig::sql::to_mysql_down(ops);
+    }
+    else if (opt.dialect == "sqlite")
+    {
+      up_sql = vix::db::mig::sql::to_sqlite_up(ops);
+      down_sql = vix::db::mig::sql::to_sqlite_down(ops);
+    }
+    else
+    {
+      throw std::runtime_error("unsupported --dialect: " + opt.dialect);
+    }
 
-    const std::string up_sql = vix::db::mig::sql::to_mysql_up(ops);
-    const std::string down_sql = vix::db::mig::sql::to_mysql_down(ops);
+    // Write the snapshot only after generation succeeds. Unsupported
+    // dialect operations must not advance the schema snapshot.
+    write_text(snapshot_path, vix::db::schema::to_json_string(newS, true));
 
     const std::string id = timestamp_id();
     const std::string label = sanitize(opt.name);

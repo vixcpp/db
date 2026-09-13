@@ -50,7 +50,7 @@ namespace vix::db::tools
         << "  " << prog << " tcp://127.0.0.1:3306 root '' mydb migrate --dir ./migrations\n"
         << "  " << prog << " tcp://127.0.0.1:3306 root '' mydb rollback --steps 1\n"
         << "  " << prog << " tcp://127.0.0.1:3306 root '' mydb status --dir db/migrations\n"
-        << "  " << prog << " makemigrations --new ./schema.new.json --snapshot ./schema.json --dir ./migrations --name create_users\n";
+        << "  " << prog << " makemigrations --new ./schema.new.json --snapshot ./schema.json --dir ./migrations --name create_users --dialect sqlite\n";
   }
 
   static bool has_flag(const std::vector<std::string> &args, const std::string &key)
